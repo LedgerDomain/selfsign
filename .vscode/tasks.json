@@ -1,0 +1,48 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "check selfsign",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"check",
+				"--package",
+				"selfsign",
+				"--all-features"
+			],
+			"presentation": {
+				"clear": true,
+				"revealProblems": "onProblem"
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "test selfsign",
+			"type": "shell",
+			"command": "cargo",
+			"args": [
+				"test",
+				"--package",
+				"selfsign",
+				"--all-features"
+			],
+			"presentation": {
+				"clear": true,
+				"revealProblems": "onProblem"
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build"
+			}
+		}
+	]
+}
