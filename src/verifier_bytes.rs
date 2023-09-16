@@ -2,33 +2,38 @@ use std::borrow::Cow;
 
 use crate::{
     base64::{base64_encode_256_bits, base64_encode_512_bits},
-    Hasher, KERIVerifier, Signature, SignatureAlgorithm, Verifier,
-    ED25519_SHA2_512_SIGNATURE_BYTES_PLACEHOLDER,
+    Hasher, KERIVerifier, KeyType, Signature, SignatureAlgorithm, Verifier,
 };
 
 /// This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct VerifierBytes<'a> {
-    pub signature_algorithm: SignatureAlgorithm,
+    pub key_type: KeyType,
     pub verifying_key_byte_v: Cow<'a, [u8]>,
 }
 
 impl<'a> VerifierBytes<'a> {
     pub fn into_owned(self) -> VerifierBytes<'static> {
         VerifierBytes {
-            signature_algorithm: self.signature_algorithm,
+            key_type: self.key_type,
             verifying_key_byte_v: Cow::Owned(self.verifying_key_byte_v.into_owned()),
         }
     }
+    pub fn to_owned(&self) -> VerifierBytes<'static> {
+        VerifierBytes {
+            key_type: self.key_type,
+            verifying_key_byte_v: Cow::Owned(self.verifying_key_byte_v.to_vec()),
+        }
+    }
     pub fn to_keri_verifier(&self) -> Result<KERIVerifier<'static>, &'static str> {
-        if self.verifying_key_byte_v.len() != self.signature_algorithm.key_type().key_bytes_len() {
+        if self.verifying_key_byte_v.len() != self.key_type.key_bytes_len() {
             return Err(
                 "verifying_key_byte_v length does not match expected bytes length of KeyType",
             );
         }
         // A buffer that can hold the base64-encoding of the longest possible signature bytes.
-        let keri_verifier_string = match self.signature_algorithm.key_type().key_bytes_len() {
+        let keri_verifier_string = match self.key_type.key_bytes_len() {
             32 => {
                 let mut buffer = [0u8; 43];
                 let verifying_key = base64_encode_256_bits(
@@ -38,11 +43,7 @@ impl<'a> VerifierBytes<'a> {
                         .expect("temp hack"),
                     &mut buffer,
                 );
-                format!(
-                    "{}{}",
-                    self.signature_algorithm.key_type().keri_prefix(),
-                    verifying_key
-                )
+                format!("{}{}", self.key_type.keri_prefix(), verifying_key)
             }
             64 => {
                 let mut buffer = [0u8; 86];
@@ -53,11 +54,7 @@ impl<'a> VerifierBytes<'a> {
                         .expect("temp hack"),
                     &mut buffer,
                 );
-                format!(
-                    "{}{}",
-                    self.signature_algorithm.key_type().keri_prefix(),
-                    verifying_key
-                )
+                format!("{}{}", self.key_type.keri_prefix(), verifying_key)
             }
             _ => {
                 panic!("this should not be possible");
@@ -67,9 +64,16 @@ impl<'a> VerifierBytes<'a> {
     }
 }
 
+impl std::ops::Deref for VerifierBytes<'_> {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        self.verifying_key_byte_v.as_ref()
+    }
+}
+
 impl Verifier for VerifierBytes<'_> {
-    fn signature_algorithm(&self) -> SignatureAlgorithm {
-        self.signature_algorithm
+    fn key_type(&self) -> KeyType {
+        self.key_type
     }
     fn to_verifier_bytes(&self) -> VerifierBytes {
         self.clone()
@@ -77,17 +81,15 @@ impl Verifier for VerifierBytes<'_> {
     fn to_keri_verifier(&self) -> KERIVerifier {
         self.to_keri_verifier().expect("programmer error")
     }
-    fn placeholder_signature(&self) -> &'static dyn Signature {
-        match self.signature_algorithm {
-            SignatureAlgorithm::Ed25519_SHA2_512 => &ED25519_SHA2_512_SIGNATURE_BYTES_PLACEHOLDER,
-        }
-    }
     fn verify_digest(
         &self,
         message_digest: Hasher,
         signature: &dyn Signature,
     ) -> Result<(), &'static str> {
-        match self.signature_algorithm {
+        if self.key_type != signature.signature_algorithm().key_type() {
+            return Err("key_type must match that of signature_algorithm");
+        }
+        match signature.signature_algorithm() {
             SignatureAlgorithm::Ed25519_SHA2_512 => {
                 #[cfg(feature = "ed25519-dalek")]
                 {

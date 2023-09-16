@@ -18,10 +18,7 @@
 			"problemMatcher": [
 				"$rustc"
 			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
+			"group": "build"
 		},
 		{
 			"label": "test selfsign",
@@ -41,7 +38,8 @@
 				"$rustc"
 			],
 			"group": {
-				"kind": "build"
+				"kind": "build",
+				"isDefault": true
 			}
 		}
 	]

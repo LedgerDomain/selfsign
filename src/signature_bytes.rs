@@ -22,6 +22,12 @@ impl<'a> SignatureBytes<'a> {
             signature_byte_v: Cow::Owned(self.signature_byte_v.into_owned()),
         }
     }
+    pub fn to_owned(&self) -> SignatureBytes<'static> {
+        SignatureBytes {
+            signature_algorithm: self.signature_algorithm,
+            signature_byte_v: Cow::Owned(self.signature_byte_v.to_vec()),
+        }
+    }
     pub fn to_keri_signature(&self) -> KERISignature<'static> {
         // TODO: Need to use different sizes based on SignatureAlgorithm.
         let mut buffer = [0u8; 86];
@@ -35,6 +41,13 @@ impl<'a> SignatureBytes<'a> {
         let keri_signature_string =
             format!("{}{}", self.signature_algorithm.keri_prefix(), signature);
         KERISignature(Cow::Owned(keri_signature_string))
+    }
+}
+
+impl std::ops::Deref for SignatureBytes<'_> {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        self.signature_byte_v.as_ref()
     }
 }
 

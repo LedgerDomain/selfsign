@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use selfsign::{SelfSignable, Signer};
+use selfsign::{SelfSignable, SignatureAlgorithm, Signer};
 
 #[test]
 #[serial_test::serial]
@@ -143,26 +143,20 @@ pub struct FancyData {
 }
 
 impl selfsign::SelfSignable for FancyData {
-    fn write_digest_data(&self, verifier: &dyn selfsign::Verifier, hasher: &mut selfsign::Hasher) {
+    fn write_digest_data(
+        &self,
+        signature_algorithm: SignatureAlgorithm,
+        verifier: &dyn selfsign::Verifier,
+        hasher: &mut selfsign::Hasher,
+    ) {
+        assert!(verifier.key_type() == signature_algorithm.key_type());
+        assert!(signature_algorithm.message_digest_hash_function() == hasher.hash_function());
         let mut c = self.clone();
-        c.set_self_signature_slots_to(verifier.placeholder_signature());
+        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
         c.set_self_signature_verifier_slots_to(verifier);
         // Not sure if serde_json always produces the same output...
         serde_json::to_writer(hasher, &c).expect("pass");
     }
-    // fn write_digest_data(
-    //     &self,
-    //     seal_verification_params: &selfsign::SealVerificationParams,
-    //     hasher: &mut selfsign::Hasher,
-    // ) {
-    //     hasher.update(b"FancyData");
-    //     use selfsign::Hashable;
-    //     self.name.update_hasher(hasher);
-    //     self.stuff_count.update_hasher(hasher);
-    //     self.data_byte_v.update_hasher(hasher);
-    //     seal_verification_params.update_hasher(hasher);
-    //     selfsign::Seal::update_hasher_with_placeholder(seal_verification_params, hasher);
-    // }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
     ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Signature>> + 'a> {
@@ -504,10 +498,17 @@ impl KeyMaterial for KeyMaterialRoot {
 }
 
 impl selfsign::SelfSignable for KeyMaterialRoot {
-    fn write_digest_data(&self, verifier: &dyn selfsign::Verifier, hasher: &mut selfsign::Hasher) {
+    fn write_digest_data(
+        &self,
+        signature_algorithm: SignatureAlgorithm,
+        verifier: &dyn selfsign::Verifier,
+        hasher: &mut selfsign::Hasher,
+    ) {
+        assert!(verifier.key_type() == signature_algorithm.key_type());
+        assert!(signature_algorithm.message_digest_hash_function() == hasher.hash_function());
         // NOTE: This is a generic JSON-serialization-based implementation.
         let mut c = self.clone();
-        c.set_self_signature_slots_to(verifier.placeholder_signature());
+        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
         c.set_self_signature_verifier_slots_to(verifier);
         // Not sure if serde_json always produces the same output...
         serde_json::to_writer(hasher, &c).expect("pass");
@@ -593,10 +594,17 @@ impl KeyMaterial for KeyMaterialNonRoot {
 }
 
 impl selfsign::SelfSignable for KeyMaterialNonRoot {
-    fn write_digest_data(&self, verifier: &dyn selfsign::Verifier, hasher: &mut selfsign::Hasher) {
+    fn write_digest_data(
+        &self,
+        signature_algorithm: SignatureAlgorithm,
+        verifier: &dyn selfsign::Verifier,
+        hasher: &mut selfsign::Hasher,
+    ) {
+        assert!(verifier.key_type() == signature_algorithm.key_type());
+        assert!(signature_algorithm.message_digest_hash_function() == hasher.hash_function());
         // NOTE: This is a generic JSON-serialization-based implementation.
         let mut c = self.clone();
-        c.set_self_signature_slots_to(verifier.placeholder_signature());
+        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
         c.set_self_signature_verifier_slots_to(verifier);
         // Not sure if serde_json always produces the same output...
         serde_json::to_writer(hasher, &c).expect("pass");
@@ -650,7 +658,7 @@ fn test_multiple_self_signature_slots() {
                 pre_signature_path: "/identity/".into(),
                 signature: capability_invocation_signing_key_0
                     .signature_algorithm()
-                    .keri_signature_placeholder(),
+                    .placeholder_keri_signature(),
                 // TODO: Include version_id and self_sig as query params
                 query_o: None,
                 fragment_o: None,
@@ -844,4 +852,15 @@ fn test_multiple_self_signature_slots() {
     key_material_2
         .verify_recursive(&key_material_m)
         .expect("pass");
+}
+
+#[test]
+#[serial_test::serial]
+fn test_stuff() {
+    for _ in 0..20 {
+        let ed25519_signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+        let ed25519_verifier = ed25519_signing_key.verifier();
+        let keri_verifier = ed25519_verifier.to_keri_verifier();
+        println!("{}", keri_verifier);
+    }
 }

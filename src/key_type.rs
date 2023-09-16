@@ -1,7 +1,7 @@
 use crate::SignatureAlgorithm;
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
 pub enum KeyType {
     Ed25519,
 }

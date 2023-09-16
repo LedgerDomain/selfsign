@@ -45,6 +45,7 @@ impl Hasher {
     pub fn as_blake3_256(&self) -> &blake3::Hasher {
         match self {
             Hasher::BLAKE3_256(blake3_256) => blake3_256,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not BLAKE3_256"),
         }
     }
@@ -52,6 +53,7 @@ impl Hasher {
     pub fn as_blake3_256_mut(&mut self) -> &mut blake3::Hasher {
         match self {
             Hasher::BLAKE3_256(blake3_256) => blake3_256,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not BLAKE3_256"),
         }
     }
@@ -59,6 +61,7 @@ impl Hasher {
     pub fn into_blake3_256(self) -> blake3::Hasher {
         match self {
             Hasher::BLAKE3_256(blake3_256) => blake3_256,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not BLAKE3_256"),
         }
     }
@@ -66,6 +69,7 @@ impl Hasher {
     pub fn as_sha2_512(&self) -> &sha2::Sha512 {
         match self {
             Hasher::SHA2_512(sha2_512) => sha2_512,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not SHA2_512"),
         }
     }
@@ -73,6 +77,7 @@ impl Hasher {
     pub fn as_sha2_512_mut(&mut self) -> &mut sha2::Sha512 {
         match self {
             Hasher::SHA2_512(sha2_512) => sha2_512,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not SHA2_512"),
         }
     }
@@ -80,6 +85,7 @@ impl Hasher {
     pub fn into_sha2_512(self) -> sha2::Sha512 {
         match self {
             Hasher::SHA2_512(sha2_512) => sha2_512,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not SHA2_512"),
         }
     }

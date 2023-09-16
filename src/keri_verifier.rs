@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    base64_decode_256_bits, Hasher, KeyType, Signature, SignatureAlgorithm, Verifier,
-    VerifierBytes, ED25519_SHA2_512_KERI_SIGNATURE_PLACEHOLDER,
+    base64_decode_256_bits, Hasher, KeyType, Signature, SignatureAlgorithm, Verifier, VerifierBytes,
 };
 
 /// This is meant to be used in end-use data structures that are self-signing.
@@ -17,6 +16,9 @@ impl<'a> KERIVerifier<'a> {
     pub fn into_owned(self) -> KERIVerifier<'static> {
         KERIVerifier(Cow::Owned(self.0.into_owned()))
     }
+    pub fn to_owned(&self) -> KERIVerifier<'static> {
+        KERIVerifier(Cow::Owned(self.0.to_string()))
+    }
     pub fn to_verifier_bytes(&self) -> VerifierBytes {
         let mut buffer = [0u8; 33];
         // NOTE: This only works with 1-char prefixes.
@@ -24,11 +26,17 @@ impl<'a> KERIVerifier<'a> {
             .expect("this should not fail because of check in from_str");
         use std::str::FromStr;
         VerifierBytes {
-            signature_algorithm: KeyType::from_str(&self.0[0..1])
-                .expect("this should not fail because of check in from_str")
-                .default_signature_algorithm(),
+            key_type: KeyType::from_str(&self.0[0..1])
+                .expect("this should not fail because of check in from_str"),
             verifying_key_byte_v: Cow::Owned(verifying_key_byte_v.to_vec()),
         }
+    }
+}
+
+impl<'a> std::ops::Deref for KERIVerifier<'a> {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
     }
 }
 
@@ -56,12 +64,10 @@ impl std::str::FromStr for KERIVerifier<'_> {
 }
 
 impl Verifier for KERIVerifier<'_> {
-    fn signature_algorithm(&self) -> SignatureAlgorithm {
+    fn key_type(&self) -> KeyType {
         // This assumes that the prefix is 2 chars.  TODO: Real implementation
         use std::str::FromStr;
-        KeyType::from_str(&self.0[0..1])
-            .unwrap()
-            .default_signature_algorithm()
+        KeyType::from_str(&self.0[0..1]).unwrap()
     }
     fn to_verifier_bytes(&self) -> VerifierBytes {
         self.to_verifier_bytes()
@@ -69,22 +75,22 @@ impl Verifier for KERIVerifier<'_> {
     fn to_keri_verifier(&self) -> KERIVerifier {
         self.clone()
     }
-    fn placeholder_signature(&self) -> &'static dyn Signature {
-        match self.signature_algorithm() {
-            SignatureAlgorithm::Ed25519_SHA2_512 => &ED25519_SHA2_512_KERI_SIGNATURE_PLACEHOLDER,
-        }
-    }
     fn verify_digest(
         &self,
         message_digest: Hasher,
         signature: &dyn Signature,
     ) -> Result<(), &'static str> {
         if message_digest.hash_function()
-            != self.signature_algorithm().message_digest_hash_function()
+            != signature
+                .signature_algorithm()
+                .message_digest_hash_function()
         {
             panic!("programmer error: message_digest and verifier hash functions must match");
         }
-        match self.signature_algorithm() {
+        if self.key_type() != signature.signature_algorithm().key_type() {
+            return Err("key_type must match that of signature_algorithm");
+        }
+        match signature.signature_algorithm() {
             SignatureAlgorithm::Ed25519_SHA2_512 => {
                 #[cfg(feature = "ed25519-dalek")]
                 {

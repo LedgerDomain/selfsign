@@ -16,13 +16,14 @@ mod signer;
 mod verifier;
 mod verifier_bytes;
 
-pub(crate) use crate::base64::{
-    base64_decode_256_bits, base64_decode_512_bits, base64_encode_256_bits, base64_encode_512_bits,
-};
 #[cfg(feature = "sha2")]
 pub use crate::hash::SHA2_512_Hash;
 pub(crate) use crate::keri_signature::ED25519_SHA2_512_KERI_SIGNATURE_PLACEHOLDER;
 pub use crate::{
+    base64::{
+        base64_decode_256_bits, base64_decode_512_bits, base64_encode_256_bits,
+        base64_encode_512_bits,
+    },
     hash::Hash,
     hash_function::HashFunction,
     hashable::Hashable,

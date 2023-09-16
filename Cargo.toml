@@ -7,7 +7,7 @@ edition = "2021"
 [features]
 blake3 = ["dep:blake3"]
 # This feature provides impls of selfsign traits for ed25519-dalek types.
-ed25519-dalek = ["dep:ed25519-dalek", "dep:sha2"]
+ed25519-dalek = ["dep:ed25519-dalek", "sha2"]
 serde = ["dep:serde", "dep:serde_with"]
 # Maybe not needed because ed25519-dalek exposes sha2
 sha2 = ["dep:sha2"]

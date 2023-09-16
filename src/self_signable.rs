@@ -1,9 +1,14 @@
-use crate::{Hasher, Signature, Signer, Verifier};
+use crate::{Hasher, Signature, SignatureAlgorithm, Signer, Verifier};
 
 pub trait SelfSignable {
     /// This should feed the content of this object into the hasher in the order that it should be hashed,
     /// writing placeholders for any self-signature slots that have not yet been computed.
-    fn write_digest_data(&self, verifier: &dyn Verifier, hasher: &mut Hasher);
+    fn write_digest_data(
+        &self,
+        signature_algorithm: SignatureAlgorithm,
+        verifier: &dyn Verifier,
+        hasher: &mut Hasher,
+    );
     /// Returns an iterator over the self-signature slots in this object.
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
@@ -120,12 +125,16 @@ pub trait SelfSignable {
         &self,
         signer: &dyn Signer,
     ) -> Result<Box<dyn Signature>, &'static str> {
-        let verifier_b = signer.verifier();
-        let mut hasher = verifier_b
+        let mut hasher = signer
             .signature_algorithm()
             .message_digest_hash_function()
             .new_hasher();
-        self.write_digest_data(verifier_b.as_ref(), &mut hasher);
+        let verifier_b = signer.verifier();
+        self.write_digest_data(
+            signer.signature_algorithm(),
+            verifier_b.as_ref(),
+            &mut hasher,
+        );
         Ok(signer.sign_digest(&hasher)?)
     }
     /// Computes the self-signature and writes it into all the self-signature slots, and writes the verifier
@@ -145,16 +154,16 @@ pub trait SelfSignable {
             "This object has no self-signature slots, and therefore can't be self-signed or self-verified."
         })?;
         let verifier = self.get_self_signature_verifier()?.ok_or("This object does not have populated self-signature verifier slots, and therefore can't be self-verified.")?;
-        if unverified_self_signature.signature_algorithm() != verifier.signature_algorithm() {
-            panic!("programmer error: unverified_self_signature and verifier must have matching signature algorithm");
+        let signature_algorithm = unverified_self_signature.signature_algorithm();
+        if signature_algorithm.key_type() != verifier.key_type() {
+            panic!("programmer error: unverified_self_signature and verifier must have matching key type");
         }
         // Now compute the digest which will be used either as the direct hash value, or as the input
         // to the signature algorithm.
-        let mut hasher = verifier
-            .signature_algorithm()
+        let mut hasher = signature_algorithm
             .message_digest_hash_function()
             .new_hasher();
-        self.write_digest_data(verifier, &mut hasher);
+        self.write_digest_data(signature_algorithm, verifier, &mut hasher);
         verifier.verify_digest(hasher, unverified_self_signature)?;
         // If it got this far, it's valid.
         Ok(unverified_self_signature)

@@ -27,6 +27,7 @@ impl Hash {
     pub fn as_blake3_256_hash(&self) -> &blake3::Hash {
         match self {
             Hash::BLAKE3_256_Hash(hash) => hash,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hash is not BLAKE3_256_Hash"),
         }
     }
@@ -34,6 +35,7 @@ impl Hash {
     pub fn as_sha2_512_hash(&self) -> &SHA2_512_Hash {
         match self {
             Hash::SHA2_512_Hash(hash) => hash,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hash is not SHA2_512_Hash"),
         }
     }
@@ -41,6 +43,7 @@ impl Hash {
     pub fn into_blake3_256_hash(self) -> blake3::Hash {
         match self {
             Hash::BLAKE3_256_Hash(hash) => hash,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hash is not BLAKE3_256_Hash"),
         }
     }
@@ -48,6 +51,7 @@ impl Hash {
     pub fn into_sha2_512_hash(self) -> SHA2_512_Hash {
         match self {
             Hash::SHA2_512_Hash(hash) => hash,
+            #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hash is not SHA2_512_Hash"),
         }
     }

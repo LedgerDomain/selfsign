@@ -19,6 +19,9 @@ impl<'a> KERISignature<'a> {
     pub fn into_owned(self) -> KERISignature<'static> {
         KERISignature(Cow::Owned(self.0.into_owned()))
     }
+    pub fn to_owned(&self) -> KERISignature<'static> {
+        KERISignature(Cow::Owned(self.0.to_string()))
+    }
     pub fn to_signature_bytes(&self) -> SignatureBytes {
         use std::str::FromStr;
         let signature_algorithm = SignatureAlgorithm::from_str(&self.0[..2])
