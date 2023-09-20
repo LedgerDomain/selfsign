@@ -1,9 +1,13 @@
 use crate::{Hash, HashFunction};
 
-// TODO: This would be better as a trait.
+// TODO: This would be better as a trait, so that each of blake3::Hasher, sha2::Sha256, sha2::Sha512
+// types could simply impl that trait.
+#[derive(Clone, derive_more::From)]
 pub enum Hasher {
     #[cfg(feature = "blake3")]
     BLAKE3_256(blake3::Hasher),
+    #[cfg(feature = "sha2")]
+    SHA2_256(sha2::Sha256),
     #[cfg(feature = "sha2")]
     SHA2_512(sha2::Sha512),
 }
@@ -13,6 +17,8 @@ impl Hasher {
         match self {
             #[cfg(feature = "blake3")]
             Hasher::BLAKE3_256(_) => HashFunction::BLAKE3_256,
+            #[cfg(feature = "sha2")]
+            Hasher::SHA2_256(_) => HashFunction::SHA2_256,
             #[cfg(feature = "sha2")]
             Hasher::SHA2_512(_) => HashFunction::SHA2_512,
         }
@@ -24,6 +30,11 @@ impl Hasher {
                 blake3_256.update(byte_v);
             }
             #[cfg(feature = "sha2")]
+            Hasher::SHA2_256(sha2_256) => {
+                use sha2::Digest;
+                sha2_256.update(byte_v);
+            }
+            #[cfg(feature = "sha2")]
             Hasher::SHA2_512(sha2_512) => {
                 use sha2::Digest;
                 sha2_512.update(byte_v);
@@ -33,11 +44,16 @@ impl Hasher {
     pub fn finalize(self) -> Hash {
         match self {
             #[cfg(feature = "blake3")]
-            Hasher::BLAKE3_256(blake3_256) => blake3_256.finalize().into(),
+            Hasher::BLAKE3_256(blake3_256) => Hash::BLAKE3_256_Hash(blake3_256.finalize()),
+            #[cfg(feature = "sha2")]
+            Hasher::SHA2_256(sha2_256) => {
+                use sha2::Digest;
+                Hash::SHA2_256_Hash(sha2_256.finalize())
+            }
             #[cfg(feature = "sha2")]
             Hasher::SHA2_512(sha2_512) => {
                 use sha2::Digest;
-                sha2_512.finalize().into()
+                Hash::SHA2_512_Hash(sha2_512.finalize())
             }
         }
     }
@@ -66,6 +82,30 @@ impl Hasher {
         }
     }
     #[cfg(feature = "sha2")]
+    pub fn as_sha2_256(&self) -> &sha2::Sha256 {
+        match self {
+            Hasher::SHA2_256(sha2_256) => sha2_256,
+            #[allow(unreachable_patterns)]
+            _ => panic!("programmer error: hasher is not SHA2_256"),
+        }
+    }
+    #[cfg(feature = "sha2")]
+    pub fn as_sha2_256_mut(&mut self) -> &mut sha2::Sha256 {
+        match self {
+            Hasher::SHA2_256(sha2_256) => sha2_256,
+            #[allow(unreachable_patterns)]
+            _ => panic!("programmer error: hasher is not SHA2_256"),
+        }
+    }
+    #[cfg(feature = "sha2")]
+    pub fn into_sha2_256(self) -> sha2::Sha256 {
+        match self {
+            Hasher::SHA2_256(sha2_256) => sha2_256,
+            #[allow(unreachable_patterns)]
+            _ => panic!("programmer error: hasher is not SHA2_256"),
+        }
+    }
+    #[cfg(feature = "sha2")]
     pub fn as_sha2_512(&self) -> &sha2::Sha512 {
         match self {
             Hasher::SHA2_512(sha2_512) => sha2_512,
@@ -88,20 +128,6 @@ impl Hasher {
             #[allow(unreachable_patterns)]
             _ => panic!("programmer error: hasher is not SHA2_512"),
         }
-    }
-}
-
-#[cfg(feature = "blake3")]
-impl From<blake3::Hasher> for Hasher {
-    fn from(blake3_256: blake3::Hasher) -> Self {
-        Self::BLAKE3_256(blake3_256)
-    }
-}
-
-#[cfg(feature = "sha2")]
-impl From<sha2::Sha512> for Hasher {
-    fn from(sha2_512: sha2::Sha512) -> Self {
-        Self::SHA2_512(sha2_512)
     }
 }
 

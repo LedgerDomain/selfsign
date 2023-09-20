@@ -6,6 +6,11 @@ pub const ED25519_SHA2_512_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> 
     signature_algorithm: SignatureAlgorithm::Ed25519_SHA2_512,
     signature_byte_v: Cow::Borrowed(&[0u8; 64]),
 };
+pub const SECP256K1_SHA2_256_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> =
+    SignatureBytes {
+        signature_algorithm: SignatureAlgorithm::Secp256k1_SHA2_256,
+        signature_byte_v: Cow::Borrowed(&[0u8; 64]),
+    };
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, Eq, PartialEq)]

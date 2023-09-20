@@ -6,6 +6,10 @@ pub const ED25519_SHA2_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
     KERISignature(Cow::Borrowed(
         "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     ));
+pub const SECP256K1_SHA2_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
+    KERISignature(Cow::Borrowed(
+        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    ));
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, derive_more::Display, Eq, Hash, PartialEq)]

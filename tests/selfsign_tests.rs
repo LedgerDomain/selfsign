@@ -4,9 +4,10 @@ use selfsign::{SelfSignable, SignatureAlgorithm, Signer};
 
 #[test]
 #[serial_test::serial]
-fn test_roundtrips() {
+fn test_hash_roundtrips() {
     for hash_function in [
         selfsign::HashFunction::BLAKE3_256,
+        selfsign::HashFunction::SHA2_256,
         selfsign::HashFunction::SHA2_512,
     ] {
         println!("---------------------------------------------------");
@@ -22,105 +23,113 @@ fn test_roundtrips() {
         println!("hash_parsed: {}", hash_parsed);
         assert_eq!(hash_parsed, hash);
     }
+}
 
-    println!("---------------------------------------------------");
-    println!(
-        "signer with algorithm: {:#?}",
-        selfsign::SignatureAlgorithm::Ed25519_SHA2_512
-    );
-    let mut csprng = rand::rngs::OsRng;
-    let ed25519_signing_key = ed25519_dalek::SigningKey::generate(&mut csprng);
+#[test]
+#[serial_test::serial]
+fn test_signer_verifier() {
+    let ed25519_signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
     let ed25519_verifying_key = ed25519_signing_key.verifying_key();
-    {
-        let keri_verifier = ed25519_verifying_key.to_keri_verifier();
-        println!("keri_verifier: {}", keri_verifier);
-        let verifier_bytes = keri_verifier.to_verifier_bytes();
-        assert_eq!(
-            keri_verifier,
-            verifier_bytes.to_keri_verifier().expect("pass")
-        );
-    }
-    {
-        let verifier_bytes = ed25519_verifying_key.to_verifier_bytes();
-        println!("verifier_bytes: {:?}", verifier_bytes);
-        let keri_verifier = verifier_bytes.to_keri_verifier().expect("pass");
-        assert_eq!(verifier_bytes, keri_verifier.to_verifier_bytes());
-    }
-    {
-        assert_eq!(
-            ed25519_verifying_key.to_keri_verifier(),
-            ed25519_verifying_key
-                .to_verifier_bytes()
-                .to_keri_verifier()
-                .expect("pass")
-        );
-        assert_eq!(
-            ed25519_verifying_key.to_verifier_bytes(),
-            ed25519_verifying_key.to_keri_verifier().to_verifier_bytes()
-        );
-    }
-    let keri_verifier = ed25519_verifying_key.to_keri_verifier();
-    let verifier_bytes = ed25519_verifying_key.to_verifier_bytes();
+    let secp256k1_signing_key = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let secp256k1_verifying_key = k256::ecdsa::VerifyingKey::from(&secp256k1_signing_key);
 
-    let message = b"blah blah blah blah hippos again";
-    use selfsign::Signer;
-    let signature_b = ed25519_signing_key.sign_message(message).expect("pass");
-    {
+    let signer_verifier_v: Vec<(&dyn selfsign::Signer, &dyn selfsign::Verifier)> = vec![
+        (&ed25519_signing_key, &ed25519_verifying_key),
+        (&secp256k1_signing_key, &secp256k1_verifying_key),
+    ];
+    for (signer, verifier) in signer_verifier_v.into_iter() {
+        println!("---------------------------------------------------");
+        println!("signer with algorithm: {:#?}", signer.signature_algorithm());
+        {
+            let keri_verifier = verifier.to_keri_verifier();
+            println!("keri_verifier: {}", keri_verifier);
+            let verifier_bytes = keri_verifier.to_verifier_bytes();
+            assert_eq!(
+                keri_verifier,
+                verifier_bytes.to_keri_verifier().expect("pass")
+            );
+        }
+        {
+            let verifier_bytes = verifier.to_verifier_bytes();
+            println!("verifier_bytes: {:?}", verifier_bytes);
+            let keri_verifier = verifier_bytes.to_keri_verifier().expect("pass");
+            assert_eq!(verifier_bytes, keri_verifier.to_verifier_bytes());
+        }
+        {
+            assert_eq!(
+                verifier.to_keri_verifier(),
+                verifier
+                    .to_verifier_bytes()
+                    .to_keri_verifier()
+                    .expect("pass")
+            );
+            assert_eq!(
+                verifier.to_verifier_bytes(),
+                verifier.to_keri_verifier().to_verifier_bytes()
+            );
+        }
+        let keri_verifier = verifier.to_keri_verifier();
+        let verifier_bytes = verifier.to_verifier_bytes();
+
+        let message = b"blah blah blah blah hippos again";
+        let signature_b = signer.sign_message(message).expect("pass");
+        {
+            let keri_signature = signature_b.to_keri_signature();
+            println!("keri_signature: {}", keri_signature);
+            let signature_bytes = keri_signature.to_signature_bytes();
+            assert_eq!(keri_signature, signature_bytes.to_keri_signature());
+        }
+        {
+            let signature_bytes = signature_b.to_signature_bytes();
+            println!("signature_bytes: {:?}", signature_bytes);
+            let keri_signature = signature_bytes.to_keri_signature();
+            assert_eq!(signature_bytes, keri_signature.to_signature_bytes());
+        }
+        {
+            assert_eq!(
+                signature_b.to_keri_signature(),
+                signature_b.to_signature_bytes().to_keri_signature()
+            );
+            assert_eq!(
+                signature_b.to_signature_bytes(),
+                signature_b.to_keri_signature().to_signature_bytes()
+            );
+        }
         let keri_signature = signature_b.to_keri_signature();
-        println!("keri_signature: {}", keri_signature);
-        let signature_bytes = keri_signature.to_signature_bytes();
-        assert_eq!(keri_signature, signature_bytes.to_keri_signature());
-    }
-    {
         let signature_bytes = signature_b.to_signature_bytes();
-        println!("signature_bytes: {:?}", signature_bytes);
-        let keri_signature = signature_bytes.to_keri_signature();
-        assert_eq!(signature_bytes, keri_signature.to_signature_bytes());
+
+        use selfsign::Verifier;
+
+        verifier
+            .verify_message(message, signature_b.as_ref())
+            .expect("pass");
+        keri_verifier
+            .verify_message(message, signature_b.as_ref())
+            .expect("pass");
+        verifier_bytes
+            .verify_message(message, signature_b.as_ref())
+            .expect("pass");
+
+        verifier
+            .verify_message(message, &keri_signature)
+            .expect("pass");
+        keri_verifier
+            .verify_message(message, &keri_signature)
+            .expect("pass");
+        verifier_bytes
+            .verify_message(message, &keri_signature)
+            .expect("pass");
+
+        verifier
+            .verify_message(message, &signature_bytes)
+            .expect("pass");
+        keri_verifier
+            .verify_message(message, &signature_bytes)
+            .expect("pass");
+        verifier_bytes
+            .verify_message(message, &signature_bytes)
+            .expect("pass");
     }
-    {
-        assert_eq!(
-            signature_b.to_keri_signature(),
-            signature_b.to_signature_bytes().to_keri_signature()
-        );
-        assert_eq!(
-            signature_b.to_signature_bytes(),
-            signature_b.to_keri_signature().to_signature_bytes()
-        );
-    }
-    let keri_signature = signature_b.to_keri_signature();
-    let signature_bytes = signature_b.to_signature_bytes();
-
-    use selfsign::Verifier;
-
-    ed25519_verifying_key
-        .verify_message(message, signature_b.as_ref())
-        .expect("pass");
-    keri_verifier
-        .verify_message(message, signature_b.as_ref())
-        .expect("pass");
-    verifier_bytes
-        .verify_message(message, signature_b.as_ref())
-        .expect("pass");
-
-    ed25519_verifying_key
-        .verify_message(message, &keri_signature)
-        .expect("pass");
-    keri_verifier
-        .verify_message(message, &keri_signature)
-        .expect("pass");
-    verifier_bytes
-        .verify_message(message, &keri_signature)
-        .expect("pass");
-
-    ed25519_verifying_key
-        .verify_message(message, &signature_bytes)
-        .expect("pass");
-    keri_verifier
-        .verify_message(message, &signature_bytes)
-        .expect("pass");
-    verifier_bytes
-        .verify_message(message, &signature_bytes)
-        .expect("pass");
 }
 
 #[derive(Clone, Debug, serde::Serialize)]

@@ -3,12 +3,12 @@ use crate::{
     Signer, Verifier, VerifierBytes,
 };
 
-impl Signer for ed25519_dalek::SigningKey {
+impl Signer for k256::ecdsa::SigningKey {
     fn signature_algorithm(&self) -> SignatureAlgorithm {
-        SignatureAlgorithm::Ed25519_SHA2_512
+        SignatureAlgorithm::Secp256k1_SHA2_256
     }
     fn verifier(&self) -> Box<dyn Verifier> {
-        Box::new(self.verifying_key())
+        Box::new(self.verifying_key().clone())
     }
     fn key_byte_len(&self) -> usize {
         32
@@ -20,15 +20,15 @@ impl Signer for ed25519_dalek::SigningKey {
         if hasher.hash_function() != self.signature_algorithm().message_digest_hash_function() {
             panic!("programmer error: hasher and signer hash functions must match");
         }
-        let signature =
-            ed25519_dalek::DigestSigner::sign_digest(self, hasher.as_sha2_512().clone());
+        let signature: k256::ecdsa::Signature =
+            k256::ecdsa::signature::DigestSigner::sign_digest(self, hasher.clone().into_sha2_256());
         Ok(Box::new(signature))
     }
 }
 
-impl Signature for ed25519_dalek::Signature {
+impl Signature for k256::ecdsa::Signature {
     fn signature_algorithm(&self) -> SignatureAlgorithm {
-        SignatureAlgorithm::Ed25519_SHA2_512
+        SignatureAlgorithm::Secp256k1_SHA2_256
     }
     fn to_signature_bytes(&self) -> SignatureBytes {
         SignatureBytes {
@@ -41,55 +41,52 @@ impl Signature for ed25519_dalek::Signature {
     }
 }
 
-impl TryFrom<&SignatureBytes<'_>> for ed25519_dalek::Signature {
+impl TryFrom<&SignatureBytes<'_>> for k256::ecdsa::Signature {
     type Error = &'static str;
     fn try_from(signature_bytes: &SignatureBytes) -> Result<Self, Self::Error> {
-        if signature_bytes.signature_algorithm != SignatureAlgorithm::Ed25519_SHA2_512 {
-            return Err("signature_algorithm must be Ed25519_SHA2_512");
+        if signature_bytes.signature_algorithm != SignatureAlgorithm::Secp256k1_SHA2_256 {
+            return Err("signature_algorithm must be Secp256k1_SHA2_256");
         }
-        let signature_byte_array: &[u8; 64] = signature_bytes
+        let signature_byte_array = signature_bytes
             .signature_byte_v
             .as_ref()
             .try_into()
             .map_err(|_| "signature_byte_v must be exactly 64 bytes long")?;
-        Ok(Self::from_bytes(signature_byte_array))
+        Ok(Self::from_bytes(signature_byte_array).map_err(|_| "malformed k256 Signature")?)
     }
 }
 
-impl From<&ed25519_dalek::Signature> for SignatureBytes<'_> {
-    fn from(signature: &ed25519_dalek::Signature) -> Self {
+impl From<&k256::ecdsa::Signature> for SignatureBytes<'_> {
+    fn from(signature: &k256::ecdsa::Signature) -> Self {
         Self {
-            signature_algorithm: SignatureAlgorithm::Ed25519_SHA2_512,
+            signature_algorithm: SignatureAlgorithm::Secp256k1_SHA2_256,
             signature_byte_v: signature.to_bytes().to_vec().into(),
         }
     }
 }
 
-impl TryFrom<&VerifierBytes<'_>> for ed25519_dalek::VerifyingKey {
+impl TryFrom<&VerifierBytes<'_>> for k256::ecdsa::VerifyingKey {
     type Error = &'static str;
     fn try_from(verifier_bytes: &VerifierBytes) -> Result<Self, Self::Error> {
-        if verifier_bytes.key_type != KeyType::Ed25519 {
-            return Err("key_type must be Ed25519");
+        if verifier_bytes.key_type != KeyType::Secp256k1 {
+            return Err("key_type must be Secp256k1");
         }
-        let verifying_key_byte_array: &[u8; 32] = verifier_bytes
-            .verifying_key_byte_v
-            .as_ref()
-            .try_into()
-            .map_err(|_| "verifying_key_byte_v must be exactly 32 bytes long")?;
-        Ok(Self::from_bytes(verifying_key_byte_array).map_err(|_| {
-            "ed25519_dalek::VerifyingKey::from_bytes failed: malformed verifying_key_byte_v"
-        })?)
+        let k256_verifying_key =
+            k256::ecdsa::VerifyingKey::from_sec1_bytes(&verifier_bytes.verifying_key_byte_v)
+                .map_err(|_| "k256::ecdsa::VerifyingKey::from_bytes failed")?;
+        Ok(k256_verifying_key)
     }
 }
 
-impl Verifier for ed25519_dalek::VerifyingKey {
+impl Verifier for k256::ecdsa::VerifyingKey {
     fn key_type(&self) -> KeyType {
-        KeyType::Ed25519
+        KeyType::Secp256k1
     }
     fn to_verifier_bytes(&self) -> VerifierBytes {
+        let verifying_key_byte_v = self.to_sec1_bytes().to_vec();
         VerifierBytes {
             key_type: self.key_type(),
-            verifying_key_byte_v: self.to_bytes().to_vec().into(),
+            verifying_key_byte_v: verifying_key_byte_v.into(),
         }
     }
     fn to_keri_verifier(&self) -> KERIVerifier {
@@ -112,14 +109,13 @@ impl Verifier for ed25519_dalek::VerifyingKey {
         if self.key_type() != signature.signature_algorithm().key_type() {
             return Err("key_type must match that of signature_algorithm");
         }
-        let signature_bytes = signature.to_signature_bytes();
-        let signature_byte_array: &[u8; 64] = signature_bytes
-            .signature_byte_v
-            .as_ref()
-            .try_into()
-            .map_err(|_| "signature_byte_v must be exactly 64 bytes long")?;
-        let signature = ed25519_dalek::Signature::from_bytes(signature_byte_array);
-        self.verify_prehashed(message_digest.into_sha2_512(), None, &signature)
-            .map_err(|_| "Ed25519_SHA2_512 signature verification failed")
+        let k256_signature = k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())
+            .map_err(|_| "malformed k256 Signature")?;
+        k256::ecdsa::signature::DigestVerifier::verify_digest(
+            self,
+            message_digest.into_sha2_256(),
+            &k256_signature,
+        )
+        .map_err(|_| "Secp256k1_SHA2_256 signature verification failed")
     }
 }

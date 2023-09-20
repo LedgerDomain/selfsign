@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     base64::{base64_encode_256_bits, base64_encode_512_bits},
-    Hasher, KERIVerifier, KeyType, Signature, SignatureAlgorithm, Verifier,
+    base64_encode_264_bits, Hasher, KERIVerifier, KeyType, Signature, SignatureAlgorithm, Verifier,
 };
 
 /// This is meant to be used in end-use data structures that are self-signing.
@@ -32,11 +32,21 @@ impl<'a> VerifierBytes<'a> {
                 "verifying_key_byte_v length does not match expected bytes length of KeyType",
             );
         }
-        // A buffer that can hold the base64-encoding of the longest possible signature bytes.
         let keri_verifier_string = match self.key_type.key_bytes_len() {
             32 => {
                 let mut buffer = [0u8; 43];
                 let verifying_key = base64_encode_256_bits(
+                    self.verifying_key_byte_v
+                        .as_ref()
+                        .try_into()
+                        .expect("temp hack"),
+                    &mut buffer,
+                );
+                format!("{}{}", self.key_type.keri_prefix(), verifying_key)
+            }
+            33 => {
+                let mut buffer = [0u8; 44];
+                let verifying_key = base64_encode_264_bits(
                     self.verifying_key_byte_v
                         .as_ref()
                         .try_into()
@@ -93,22 +103,9 @@ impl Verifier for VerifierBytes<'_> {
             SignatureAlgorithm::Ed25519_SHA2_512 => {
                 #[cfg(feature = "ed25519-dalek")]
                 {
-                    // TODO: Use From traits between the various types.
-                    let ed25519_dalek_verifying_key = ed25519_dalek::VerifyingKey::from_bytes(
-                        self.verifying_key_byte_v
-                            .as_ref()
-                            .try_into()
-                            .map_err(|_| "malformed Ed25519 verifying key")?,
-                    )
-                    .map_err(|_| "malformed Ed25519 verifying key")?;
-                    let ed25519_dalek_signature = ed25519_dalek::Signature::from_bytes(
-                        signature
-                            .to_signature_bytes()
-                            .signature_byte_v
-                            .as_ref()
-                            .try_into()
-                            .map_err(|_| "malformed Ed25519 signature")?,
-                    );
+                    let ed25519_dalek_verifying_key = ed25519_dalek::VerifyingKey::try_from(self)?;
+                    let ed25519_dalek_signature =
+                        ed25519_dalek::Signature::try_from(&signature.to_signature_bytes())?;
                     ed25519_dalek_verifying_key
                         .verify_prehashed(
                             message_digest.into_sha2_512(),
@@ -120,6 +117,24 @@ impl Verifier for VerifierBytes<'_> {
                 #[cfg(not(feature = "ed25519-dalek"))]
                 {
                     panic!("ed25519-dalek feature not enabled");
+                }
+            }
+            SignatureAlgorithm::Secp256k1_SHA2_256 => {
+                #[cfg(feature = "k256")]
+                {
+                    let k256_verifying_key = k256::ecdsa::VerifyingKey::try_from(self)?;
+                    let k256_signature =
+                        k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())?;
+                    k256::ecdsa::signature::DigestVerifier::verify_digest(
+                        &k256_verifying_key,
+                        message_digest.into_sha2_256(),
+                        &k256_signature,
+                    )
+                    .map_err(|_| "Secp256k1_SHA2_256 signature verification failed")
+                }
+                #[cfg(not(feature = "k256"))]
+                {
+                    panic!("k256 feature not enabled");
                 }
             }
         }
