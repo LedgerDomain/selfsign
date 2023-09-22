@@ -22,7 +22,7 @@ pub trait SelfSignable {
     /// Sets all self-signature verifier slots in this object (including any nested objects) to the given verifier.
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn Verifier);
     /// Checks that all the self-signature slots are equal, returning error if they aren't.  Otherwise returns
-    /// Some(self_seal) if they are set, and None if they are not set.
+    /// Some(self_signature) if they are set, and None if they are not set.
     fn get_unverified_self_signature(&self) -> Result<Option<&dyn Signature>, &'static str> {
         let total_self_signature_count = self.self_signature_oi().count();
         // First, ensure that the self-signature slots are either all Some(_) or all None.

@@ -196,7 +196,7 @@ impl selfsign::SelfSignable for FancyData {
 
 #[test]
 #[serial_test::serial]
-fn test_self_sealable() {
+fn test_self_signable() {
     let mut csprng = rand::rngs::OsRng;
     let signer_bv: Vec<Box<dyn selfsign::Signer>> =
         vec![Box::new(ed25519_dalek::SigningKey::generate(&mut csprng))];
@@ -215,20 +215,20 @@ fn test_self_sealable() {
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
-        // println!("fancy_data_0 before seal: {:#?}", fancy_data_0);
+        // println!("fancy_data_0 before self-signature: {:#?}", fancy_data_0);
         println!(
-            "fancy_data_0 before seal JSON: {}",
-            serde_json::to_string(&fancy_data_0).expect("pass")
+            "fancy_data_0 before self-signature JSON: {}",
+            serde_json::to_string_pretty(&fancy_data_0).expect("pass")
         );
         use selfsign::SelfSignable;
         fancy_data_0.self_sign(signer).expect("pass");
-        // println!("fancy_data_0 after seal: {:#?}", fancy_data_0);
+        // println!("fancy_data_0 after self-signature: {:#?}", fancy_data_0);
         println!(
-            "fancy_data_0 after seal JSON: {}",
-            serde_json::to_string(&fancy_data_0).expect("pass")
+            "fancy_data_0 after self-signature JSON: {}",
+            serde_json::to_string_pretty(&fancy_data_0).expect("pass")
         );
         fancy_data_0.verify_self_signatures().expect("pass");
-        println!("fancy_data_0 self seal verified!");
+        println!("fancy_data_0 self self-signature verified!");
         // Let's make sure that altering the data causes the verification to fail.
         let mut altered_fancy_data_0 = fancy_data_0.clone();
         altered_fancy_data_0.name = "maaaaaaaaaa".to_string();
@@ -242,19 +242,19 @@ fn test_self_sealable() {
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
-        // println!("fancy_data_1 before seal: {:#?}", fancy_data_1);
+        // println!("fancy_data_1 before self-signature: {:#?}", fancy_data_1);
         println!(
-            "fancy_data_1 before seal JSON: {}",
+            "fancy_data_1 before self-signature JSON: {}",
             serde_json::to_string(&fancy_data_1).expect("pass")
         );
         fancy_data_1.self_sign(signer).expect("pass");
-        // println!("fancy_data_1 after seal: {:#?}", fancy_data_1);
+        // println!("fancy_data_1 after self-signature: {:#?}", fancy_data_1);
         println!(
-            "fancy_data_1 after seal JSON: {}",
+            "fancy_data_1 after self-signature JSON: {}",
             serde_json::to_string(&fancy_data_1).expect("pass")
         );
         fancy_data_1.verify_self_signatures().expect("pass");
-        println!("fancy_data_1 self seal verified!");
+        println!("fancy_data_1 self self-signature verified!");
     }
 }
 
