@@ -2,6 +2,12 @@
 
 A Rust crate providing traits and data types to define self-signing data.  Inspired by the Self-Addressing Identifier concept in [KERI](https://github.com/SmithSamuelM/Papers/blob/master/whitepapers/KERI_WP_2.x.web.pdf).  This implementation is not necessarily compatible with KERI.  At the moment, it's a very initial implementation, and is a work in progress.
 
+To run the tests, which include printouts demonstrating various features and data structures, run
+
+    cargo test --all-features -- --nocapture
+
+The `--all-features` is necessary for now.
+
 ## Overview
 
 In the context of cryptography, it's not possible to directly include a digital signature within the message being signed.  However, it is possible to define slightly altered signing and verification procedures for a given data structure which in a way does contain a signature over itself.
