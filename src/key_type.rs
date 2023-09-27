@@ -1,6 +1,5 @@
-use crate::SignatureAlgorithm;
+use crate::{SignatureAlgorithm, ED25519_SHA_512, SECP256K1_SHA_256};
 
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
 pub enum KeyType {
     Ed25519,
@@ -24,10 +23,10 @@ impl KeyType {
     }
     /// Each KeyType has a specified default SignatureAlgorithm so that the user doesn't need to
     /// make a choice and potentially weaken the crypto system.
-    pub const fn default_signature_algorithm(&self) -> SignatureAlgorithm {
+    pub const fn default_signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
         match self {
-            KeyType::Ed25519 => SignatureAlgorithm::Ed25519_SHA2_512,
-            KeyType::Secp256k1 => SignatureAlgorithm::Secp256k1_SHA2_256,
+            KeyType::Ed25519 => &ED25519_SHA_512,
+            KeyType::Secp256k1 => &SECP256K1_SHA_256,
         }
     }
 }

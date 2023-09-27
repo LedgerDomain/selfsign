@@ -1,13 +1,13 @@
-use crate::{Hasher, Signature, SignatureAlgorithm, Signer, Verifier};
+use crate::{Signature, SignatureAlgorithm, Signer, Verifier};
 
 pub trait SelfSignable {
     /// This should feed the content of this object into the hasher in the order that it should be hashed,
     /// writing placeholders for any self-signature slots that have not yet been computed.
     fn write_digest_data(
         &self,
-        signature_algorithm: SignatureAlgorithm,
+        signature_algorithm: &dyn SignatureAlgorithm,
         verifier: &dyn Verifier,
-        hasher: &mut Hasher,
+        hasher: &mut dyn selfhash::Hasher,
     );
     /// Returns an iterator over the self-signature slots in this object.
     fn self_signature_oi<'a, 'b: 'a>(
@@ -125,7 +125,7 @@ pub trait SelfSignable {
         &self,
         signer: &dyn Signer,
     ) -> Result<Box<dyn Signature>, &'static str> {
-        let mut hasher = signer
+        let mut hasher_b = signer
             .signature_algorithm()
             .message_digest_hash_function()
             .new_hasher();
@@ -133,9 +133,9 @@ pub trait SelfSignable {
         self.write_digest_data(
             signer.signature_algorithm(),
             verifier_b.as_ref(),
-            &mut hasher,
+            hasher_b.as_mut(),
         );
-        Ok(signer.sign_digest(&hasher)?)
+        Ok(signer.sign_digest(hasher_b)?)
     }
     /// Computes the self-signature and writes it into all the self-signature slots, and writes the verifier
     /// that is derived from signer into all the self-signature verifier slots.
@@ -160,11 +160,11 @@ pub trait SelfSignable {
         }
         // Now compute the digest which will be used either as the direct hash value, or as the input
         // to the signature algorithm.
-        let mut hasher = signature_algorithm
+        let mut hasher_b = signature_algorithm
             .message_digest_hash_function()
             .new_hasher();
-        self.write_digest_data(signature_algorithm, verifier, &mut hasher);
-        verifier.verify_digest(hasher, unverified_self_signature)?;
+        self.write_digest_data(signature_algorithm, verifier, hasher_b.as_mut());
+        verifier.verify_digest(hasher_b, unverified_self_signature)?;
         // If it got this far, it's valid.
         Ok(unverified_self_signature)
     }

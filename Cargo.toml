@@ -1,24 +1,18 @@
 [package]
 name = "selfsign"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Victor Dods <victor.dods@gmail.com>"]
 edition = "2021"
 
 [features]
-blake3 = ["dep:blake3"]
 # This feature provides impls of selfsign traits for ed25519-dalek crate types.
-ed25519-dalek = ["dep:ed25519-dalek", "sha2"]
+ed25519-dalek = ["dep:ed25519-dalek", "selfhash/sha-512", "dep:sha2"]
 # This feature provides impls of selfsign traits for k256 crate types (k256 is also called secp256k1).
-k256 = ["dep:k256", "sha2", "dep:signature"]
+k256 = ["dep:k256", "selfhash/sha-256", "dep:signature"]
 serde = ["dep:serde", "dep:serde_with"]
-# Maybe not needed because ed25519-dalek exposes sha2
-sha2 = ["dep:sha2"]
 
 [dependencies]
 base64 = { version = "0.21.4", default-features = false }
-blake3 = { version = "1.4.1", optional = true, default-features = false, features = [
-    "std",
-] }
 derive_more = { version = "0.99.17", default-features = false, features = [
     "deref",
     "display",
@@ -33,6 +27,7 @@ k256 = { version = "0.13.1", optional = true, default-features = false, features
     "alloc",
     "ecdsa",
 ] }
+selfhash = { version = "0.1", optional = true }
 serde = { version = "1.0", optional = true, default-features = false, features = [
     "alloc",
     "derive",
@@ -49,5 +44,14 @@ ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 k256 = { version = "0.13.1" }
 chrono = { version = "0.4.30", features = ["serde"] }
 rand = { version = "0.8" }
+selfhash = { version = "0.1", features = [
+    "blake3",
+    "serde",
+    "sha-256",
+    "sha-512",
+] }
 serde_json = "1.0.106"
 serial_test = "2.0.0"
+
+[patch.crates-io]
+selfhash = { git = "https://github.com/LedgerDomain/selfhash", rev = "730453ca2f13ad99fa712800a9f44fef9a9354ee" }

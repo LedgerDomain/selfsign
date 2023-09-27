@@ -1,15 +1,9 @@
 use std::borrow::Cow;
 
-use crate::{base64_decode_512_bits, Signature, SignatureAlgorithm, SignatureBytes};
-
-pub const ED25519_SHA2_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
-    KERISignature(Cow::Borrowed(
-        "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    ));
-pub const SECP256K1_SHA2_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
-    KERISignature(Cow::Borrowed(
-        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    ));
+use crate::{
+    NamedSignatureAlgorithm, Signature, SignatureAlgorithm, SignatureBytes, ED25519_SHA_512,
+    SECP256K1_SHA_256,
+};
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, derive_more::Display, Eq, Hash, PartialEq)]
@@ -26,17 +20,27 @@ impl<'a> KERISignature<'a> {
     pub fn to_owned(&self) -> KERISignature<'static> {
         KERISignature(Cow::Owned(self.0.to_string()))
     }
+    pub fn keri_prefix<'b: 'a>(&'b self) -> &'a str {
+        &self.0[..2]
+    }
+    pub fn data<'b: 'a>(&'b self) -> &'a str {
+        &self.0[2..]
+    }
     pub fn to_signature_bytes(&self) -> SignatureBytes {
-        use std::str::FromStr;
-        let signature_algorithm = SignatureAlgorithm::from_str(&self.0[..2])
-            .expect("this should not fail because of the check done in the constructor");
+        let keri_prefix = self.keri_prefix();
+        let data = self.data();
+        let signature_algorithm: &'static dyn SignatureAlgorithm = match keri_prefix {
+            "0B" => &ED25519_SHA_512,
+            "0C" => &SECP256K1_SHA_256,
+            _ => panic!("this should not be possible"),
+        };
         match signature_algorithm.signature_bytes_len() {
             64 => {
                 let mut buffer = [0u8; 66];
-                let signature_byte_v = base64_decode_512_bits(&self.0[2..], &mut buffer)
+                let signature_byte_v = selfhash::base64_decode_512_bits(data, &mut buffer)
                     .expect("this should not fail because of the check done in the constructor");
                 SignatureBytes {
-                    signature_algorithm,
+                    named_signature_algorithm: signature_algorithm.named_signature_algorithm(),
                     signature_byte_v: Cow::Owned(signature_byte_v.to_vec()),
                 }
             }
@@ -63,11 +67,12 @@ impl std::str::FromStr for KERISignature<'_> {
         if !s.is_ascii() {
             return Err("KERISignature::from_str failed: not ASCII");
         }
-        let signature_algorithm = SignatureAlgorithm::from_str(&s[..2])?;
-        match signature_algorithm.signature_bytes_len() {
+        let keri_prefix = &s[..2];
+        let named_signature_algorithm = NamedSignatureAlgorithm::try_from_keri_prefix(keri_prefix)?;
+        match named_signature_algorithm.signature_bytes_len() {
             64 => {
                 let mut buffer = [0u8; 66];
-                base64_decode_512_bits(&s[2..], &mut buffer)?;
+                selfhash::base64_decode_512_bits(&s[2..], &mut buffer)?;
                 Ok(Self(Cow::Owned(s.to_string())))
             }
             _ => {
@@ -79,10 +84,12 @@ impl std::str::FromStr for KERISignature<'_> {
 
 impl Signature for KERISignature<'_> {
     /// This assumes the prefix is 2 chars.
-    fn signature_algorithm(&self) -> SignatureAlgorithm {
-        use std::str::FromStr;
-        SignatureAlgorithm::from_str(&self.0[..2])
-            .expect("programmer error: this constraint should have been checked upon construction")
+    fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
+        match self.keri_prefix() {
+            "0B" => &ED25519_SHA_512,
+            "0C" => &SECP256K1_SHA_256,
+            _ => panic!("this should not be possible"),
+        }
     }
     fn to_signature_bytes(&self) -> SignatureBytes {
         self.to_signature_bytes()

@@ -1,10 +1,10 @@
-use crate::{Hasher, Signature, SignatureAlgorithm, Verifier};
+use crate::{Signature, SignatureAlgorithm, Verifier};
 
 /// A trait meant to represent a signing key and the relevant actions.  For example,
 /// private keys for asymmetric cryptography, or an HMAC key.
 pub trait Signer {
     /// Returns the SignatureAlgorithm that this Signer uses.
-    fn signature_algorithm(&self) -> SignatureAlgorithm;
+    fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm;
     /// Returns the corresponding verifier which can verify Signature-s that this Signer
     /// produces.  SignerTrait is to a private key as SignatureVerifier is to a public key.
     fn verifier(&self) -> Box<dyn Verifier>;
@@ -26,13 +26,16 @@ pub trait Signer {
     /// already in a contiguous byte array, it is more efficient to use the Hasher and
     /// then call sign_digest.
     fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>, &'static str> {
-        let mut hasher = self
+        let mut hasher_b = self
             .signature_algorithm()
             .message_digest_hash_function()
             .new_hasher();
-        hasher.update(message_byte_v);
-        self.sign_digest(&hasher)
+        hasher_b.update(message_byte_v);
+        self.sign_digest(hasher_b)
     }
     /// This signs a pre-hashed message, i.e. signs the digest produced by the given hasher.
-    fn sign_digest(&self, hasher: &Hasher) -> Result<Box<dyn Signature>, &'static str>;
+    fn sign_digest(
+        &self,
+        hasher_b: Box<dyn selfhash::Hasher>,
+    ) -> Result<Box<dyn Signature>, &'static str>;
 }

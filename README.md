@@ -60,7 +60,7 @@ Here is a simple example in which a data structure has a single self-signature s
 {"name":"hippodonkey","stuff_count":42,"data_byte_v":[1,2,3],"self_signature_verifier":null,"self_signature":null}
 ```
 
-During the self-signing process, the `self_signature_verifier` field is populated with the verifying key (in this case, an Ed25519 public key, indicated via prefix `"D"` and the base64url-encoding of the 256 bits of the public key), and the `self_signature` field is populated with the appropriate placeholder (in this case, indicating that the signature algorithm is Ed25519_SHA2_512 via prefix `"0B"` and the base64url-encoding of 512 bits of 0):
+During the self-signing process, the `self_signature_verifier` field is populated with the verifying key (in this case, an Ed25519 public key, indicated via prefix `"D"` and the base64url-encoding of the 256 bits of the public key), and the `self_signature` field is populated with the appropriate placeholder (in this case, indicating that the signature algorithm is Ed25519_SHA_512 via prefix `"0B"` and the base64url-encoding of 512 bits of 0):
 
 ```json
 {"name":"hippodonkey","stuff_count":42,"data_byte_v":[1,2,3],"self_signature_verifier":"Dgcq4FvGStfSTNNXwYv2t-NiwGG1TtiRz9fgmE1FH26M","self_signature":"0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}

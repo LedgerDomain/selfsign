@@ -1,11 +1,11 @@
 use crate::{
-    Hasher, KERISignature, KERIVerifier, KeyType, Signature, SignatureAlgorithm, SignatureBytes,
-    Signer, Verifier, VerifierBytes,
+    KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, SignatureAlgorithm,
+    SignatureBytes, Signer, Verifier, VerifierBytes, SECP256K1_SHA_256,
 };
 
 impl Signer for k256::ecdsa::SigningKey {
-    fn signature_algorithm(&self) -> SignatureAlgorithm {
-        SignatureAlgorithm::Secp256k1_SHA2_256
+    fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
+        &SECP256K1_SHA_256
     }
     fn verifier(&self) -> Box<dyn Verifier> {
         Box::new(self.verifying_key().clone())
@@ -16,23 +16,34 @@ impl Signer for k256::ecdsa::SigningKey {
     fn copy_key_bytes(&self, target: &mut [u8]) {
         target.copy_from_slice(&self.to_bytes());
     }
-    fn sign_digest(&self, hasher: &Hasher) -> Result<Box<dyn Signature>, &'static str> {
-        if hasher.hash_function() != self.signature_algorithm().message_digest_hash_function() {
+    fn sign_digest(
+        &self,
+        hasher_b: Box<dyn selfhash::Hasher>,
+    ) -> Result<Box<dyn Signature>, &'static str> {
+        if !hasher_b
+            .hash_function()
+            .equals(self.signature_algorithm().message_digest_hash_function())
+        {
             panic!("programmer error: hasher and signer hash functions must match");
         }
-        let signature: k256::ecdsa::Signature =
-            k256::ecdsa::signature::DigestSigner::sign_digest(self, hasher.clone().into_sha2_256());
+        let signature: k256::ecdsa::Signature = k256::ecdsa::signature::DigestSigner::sign_digest(
+            self,
+            *hasher_b
+                .into_any()
+                .downcast::<sha2::Sha256>()
+                .expect("programmer error: hasher must be sha2::Sha256"),
+        );
         Ok(Box::new(signature))
     }
 }
 
 impl Signature for k256::ecdsa::Signature {
-    fn signature_algorithm(&self) -> SignatureAlgorithm {
-        SignatureAlgorithm::Secp256k1_SHA2_256
+    fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
+        &SECP256K1_SHA_256
     }
     fn to_signature_bytes(&self) -> SignatureBytes {
         SignatureBytes {
-            signature_algorithm: self.signature_algorithm(),
+            named_signature_algorithm: self.signature_algorithm().named_signature_algorithm(),
             signature_byte_v: self.to_bytes().to_vec().into(),
         }
     }
@@ -44,8 +55,11 @@ impl Signature for k256::ecdsa::Signature {
 impl TryFrom<&SignatureBytes<'_>> for k256::ecdsa::Signature {
     type Error = &'static str;
     fn try_from(signature_bytes: &SignatureBytes) -> Result<Self, Self::Error> {
-        if signature_bytes.signature_algorithm != SignatureAlgorithm::Secp256k1_SHA2_256 {
-            return Err("signature_algorithm must be Secp256k1_SHA2_256");
+        if !signature_bytes
+            .named_signature_algorithm
+            .equals(&NamedSignatureAlgorithm::SECP256K1_SHA_256)
+        {
+            return Err("signature_algorithm must be Secp256k1_SHA_256");
         }
         let signature_byte_array = signature_bytes
             .signature_byte_v
@@ -59,7 +73,7 @@ impl TryFrom<&SignatureBytes<'_>> for k256::ecdsa::Signature {
 impl From<&k256::ecdsa::Signature> for SignatureBytes<'_> {
     fn from(signature: &k256::ecdsa::Signature) -> Self {
         Self {
-            signature_algorithm: SignatureAlgorithm::Secp256k1_SHA2_256,
+            named_signature_algorithm: NamedSignatureAlgorithm::SECP256K1_SHA_256,
             signature_byte_v: signature.to_bytes().to_vec().into(),
         }
     }
@@ -96,14 +110,14 @@ impl Verifier for k256::ecdsa::VerifyingKey {
     }
     fn verify_digest(
         &self,
-        message_digest: Hasher,
+        message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
     ) -> Result<(), &'static str> {
-        if message_digest.hash_function()
-            != signature
+        if !message_digest_b.hash_function().equals(
+            signature
                 .signature_algorithm()
-                .message_digest_hash_function()
-        {
+                .message_digest_hash_function(),
+        ) {
             panic!("programmer error: message_digest and verifier hash functions must match");
         }
         if self.key_type() != signature.signature_algorithm().key_type() {
@@ -111,11 +125,11 @@ impl Verifier for k256::ecdsa::VerifyingKey {
         }
         let k256_signature = k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())
             .map_err(|_| "malformed k256 Signature")?;
-        k256::ecdsa::signature::DigestVerifier::verify_digest(
-            self,
-            message_digest.into_sha2_256(),
-            &k256_signature,
-        )
-        .map_err(|_| "Secp256k1_SHA2_256 signature verification failed")
+        let message_digest = *message_digest_b
+            .into_any()
+            .downcast::<sha2::Sha256>()
+            .expect("programmer error: message_digest_b must be sha2::Sha256");
+        k256::ecdsa::signature::DigestVerifier::verify_digest(self, message_digest, &k256_signature)
+            .map_err(|_| "Secp256k1_SHA_256 signature verification failed")
     }
 }

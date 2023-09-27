@@ -1,4 +1,4 @@
-use crate::{Hasher, KERIVerifier, KeyType, Signature, VerifierBytes};
+use crate::{KERIVerifier, KeyType, Signature, VerifierBytes};
 
 // Debug is probably a TEMP HACK
 pub trait Verifier: std::fmt::Debug {
@@ -30,7 +30,7 @@ pub trait Verifier: std::fmt::Debug {
     /// in a contiguous byte array.
     fn verify_digest(
         &self,
-        message_digest: Hasher,
+        message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
     ) -> Result<(), &'static str>;
 }

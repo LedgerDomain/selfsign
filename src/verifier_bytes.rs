@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    base64::{base64_encode_256_bits, base64_encode_512_bits},
-    base64_encode_264_bits, Hasher, KERIVerifier, KeyType, Signature, SignatureAlgorithm, Verifier,
+    base64_encode_264_bits, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, Verifier,
 };
 
 /// This is meant to be used in end-use data structures that are self-signing.
@@ -35,7 +34,7 @@ impl<'a> VerifierBytes<'a> {
         let keri_verifier_string = match self.key_type.key_bytes_len() {
             32 => {
                 let mut buffer = [0u8; 43];
-                let verifying_key = base64_encode_256_bits(
+                let verifying_key = selfhash::base64_encode_256_bits(
                     self.verifying_key_byte_v
                         .as_ref()
                         .try_into()
@@ -57,7 +56,7 @@ impl<'a> VerifierBytes<'a> {
             }
             64 => {
                 let mut buffer = [0u8; 86];
-                let verifying_key = base64_encode_512_bits(
+                let verifying_key = selfhash::base64_encode_512_bits(
                     self.verifying_key_byte_v
                         .as_ref()
                         .try_into()
@@ -93,14 +92,16 @@ impl Verifier for VerifierBytes<'_> {
     }
     fn verify_digest(
         &self,
-        message_digest: Hasher,
+        message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
     ) -> Result<(), &'static str> {
         if self.key_type != signature.signature_algorithm().key_type() {
             return Err("key_type must match that of signature_algorithm");
         }
-        match signature.signature_algorithm() {
-            SignatureAlgorithm::Ed25519_SHA2_512 => {
+        // TODO: It would be better if this dispatched to the specific verifiers instead of
+        // invoking ed25519-dalek and k256 crates directly here.
+        match signature.signature_algorithm().named_signature_algorithm() {
+            NamedSignatureAlgorithm::ED25519_SHA_512 => {
                 #[cfg(feature = "ed25519-dalek")]
                 {
                     let ed25519_dalek_verifying_key = ed25519_dalek::VerifyingKey::try_from(self)?;
@@ -108,18 +109,21 @@ impl Verifier for VerifierBytes<'_> {
                         ed25519_dalek::Signature::try_from(&signature.to_signature_bytes())?;
                     ed25519_dalek_verifying_key
                         .verify_prehashed(
-                            message_digest.into_sha2_512(),
+                            *message_digest_b
+                                .into_any()
+                                .downcast::<sha2::Sha512>()
+                                .expect("programmer error: message digest must be sha2::Sha512"),
                             None,
                             &ed25519_dalek_signature,
                         )
-                        .map_err(|_| "Ed25519_SHA2_512 signature verification failed")
+                        .map_err(|_| "Ed25519_SHA_512 signature verification failed")
                 }
                 #[cfg(not(feature = "ed25519-dalek"))]
                 {
                     panic!("ed25519-dalek feature not enabled");
                 }
             }
-            SignatureAlgorithm::Secp256k1_SHA2_256 => {
+            NamedSignatureAlgorithm::SECP256K1_SHA_256 => {
                 #[cfg(feature = "k256")]
                 {
                     let k256_verifying_key = k256::ecdsa::VerifyingKey::try_from(self)?;
@@ -127,15 +131,21 @@ impl Verifier for VerifierBytes<'_> {
                         k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())?;
                     k256::ecdsa::signature::DigestVerifier::verify_digest(
                         &k256_verifying_key,
-                        message_digest.into_sha2_256(),
+                        *message_digest_b
+                            .into_any()
+                            .downcast::<sha2::Sha256>()
+                            .expect("programmer error: message digest must be sha2::Sha256"),
                         &k256_signature,
                     )
-                    .map_err(|_| "Secp256k1_SHA2_256 signature verification failed")
+                    .map_err(|_| "Secp256k1_SHA_256 signature verification failed")
                 }
                 #[cfg(not(feature = "k256"))]
                 {
                     panic!("k256 feature not enabled");
                 }
+            }
+            _ => {
+                panic!("unrecognized signature algorithm");
             }
         }
     }
