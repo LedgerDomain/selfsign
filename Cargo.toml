@@ -42,7 +42,7 @@ signature = { version = "2", optional = true, default-features = false }
 [dev-dependencies]
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 k256 = { version = "0.13.1" }
-chrono = { version = "0.4.30", features = ["serde"] }
+time = { version = "0.3.29", features = ["serde"] }
 rand = { version = "0.8" }
 selfhash = { version = "0.1", features = [
     "blake3",

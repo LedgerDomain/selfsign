@@ -352,7 +352,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     fn version_id(&self) -> u32;
     /// This is the timestamp at which this KeyMaterial becomes current and the previous one becomes
     /// no longer current.
-    fn valid_from(&self) -> chrono::DateTime<chrono::Utc>;
+    fn valid_from(&self) -> time::OffsetDateTime;
     /// List of verifiers for the authentication key purpose.
     fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>];
     /// List of verifiers for the assertion key purpose.
@@ -444,7 +444,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
 pub struct KeyMaterialRoot {
     pub uri: URIWithSignature,
     pub version_id: u32,
-    pub valid_from: chrono::DateTime<chrono::Utc>,
+    pub valid_from: time::OffsetDateTime,
     pub authentication_v: Vec<selfsign::KERIVerifier<'static>>,
     pub assertion_v: Vec<selfsign::KERIVerifier<'static>>,
     pub key_exchange_v: Vec<selfsign::KERIVerifier<'static>>,
@@ -466,7 +466,7 @@ impl KeyMaterial for KeyMaterialRoot {
     fn version_id(&self) -> u32 {
         self.version_id
     }
-    fn valid_from(&self) -> chrono::DateTime<chrono::Utc> {
+    fn valid_from(&self) -> time::OffsetDateTime {
         self.valid_from
     }
     fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>] {
@@ -542,7 +542,7 @@ pub struct KeyMaterialNonRoot {
     pub uri: URIWithSignature,
     pub previous_key_material_self_signature: selfsign::KERISignature<'static>,
     pub version_id: u32,
-    pub valid_from: chrono::DateTime<chrono::Utc>,
+    pub valid_from: time::OffsetDateTime,
     pub authentication_v: Vec<selfsign::KERIVerifier<'static>>,
     pub assertion_v: Vec<selfsign::KERIVerifier<'static>>,
     pub key_exchange_v: Vec<selfsign::KERIVerifier<'static>>,
@@ -564,7 +564,7 @@ impl KeyMaterial for KeyMaterialNonRoot {
     fn version_id(&self) -> u32 {
         self.version_id
     }
-    fn valid_from(&self) -> chrono::DateTime<chrono::Utc> {
+    fn valid_from(&self) -> time::OffsetDateTime {
         self.valid_from
     }
     fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>] {
@@ -659,7 +659,7 @@ fn test_multiple_self_signature_slots() {
                 fragment_o: None,
             },
             version_id: 0,
-            valid_from: chrono::Utc::now(),
+            valid_from: time::OffsetDateTime::now_utc(),
             authentication_v: vec![authentication_signing_key_0
                 .verifier()
                 .to_keri_verifier()
@@ -722,7 +722,7 @@ fn test_multiple_self_signature_slots() {
                 .unwrap()
                 .clone(),
             version_id: key_material_0.version_id + 1,
-            valid_from: chrono::Utc::now(),
+            valid_from: time::OffsetDateTime::now_utc(),
             authentication_v: vec![authentication_signing_key_1
                 .verifier()
                 .to_keri_verifier()
@@ -784,7 +784,7 @@ fn test_multiple_self_signature_slots() {
                 .unwrap()
                 .clone(),
             version_id: key_material_1.version_id + 1,
-            valid_from: chrono::Utc::now(),
+            valid_from: time::OffsetDateTime::now_utc(),
             authentication_v: vec![
                 authentication_signing_key_1
                     .verifier()
