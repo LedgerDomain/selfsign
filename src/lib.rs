@@ -27,7 +27,7 @@ pub use crate::{
     named_signature_algorithm::NamedSignatureAlgorithm,
     secp256k1_sha256::{Secp256k1_SHA256, SECP256K1_SHA_256},
     self_sign_and_hashable::SelfSignAndHashable,
-    self_signable::SelfSignable,
+    self_signable::{write_digest_data_using_jcs, SelfSignable},
     signature::Signature,
     signature_algorithm::SignatureAlgorithm,
     signature_bytes::SignatureBytes,

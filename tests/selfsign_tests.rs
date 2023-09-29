@@ -136,15 +136,7 @@ impl selfsign::SelfSignable for FancyData {
         verifier: &dyn selfsign::Verifier,
         hasher: &mut dyn selfhash::Hasher,
     ) {
-        assert!(verifier.key_type() == signature_algorithm.key_type());
-        assert!(signature_algorithm
-            .message_digest_hash_function()
-            .equals(hasher.hash_function()));
-        let mut c = self.clone();
-        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
-        c.set_self_signature_verifier_slots_to(verifier);
-        // Not sure if serde_json always produces the same output... TODO: Use JSONC or JCS probably
-        serde_json::to_writer(hasher, &c).expect("pass");
+        selfsign::write_digest_data_using_jcs(self, signature_algorithm, verifier, hasher);
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
@@ -493,16 +485,7 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
         verifier: &dyn selfsign::Verifier,
         hasher: &mut dyn selfhash::Hasher,
     ) {
-        assert!(verifier.key_type() == signature_algorithm.key_type());
-        assert!(signature_algorithm
-            .message_digest_hash_function()
-            .equals(hasher.hash_function()));
-        // NOTE: This is a generic JSON-serialization-based implementation.
-        let mut c = self.clone();
-        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
-        c.set_self_signature_verifier_slots_to(verifier);
-        // Not sure if serde_json always produces the same output... TODO: Use JSONC or JCS probably
-        serde_json::to_writer(hasher, &c).expect("pass");
+        selfsign::write_digest_data_using_jcs(self, signature_algorithm, verifier, hasher);
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
@@ -591,16 +574,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
         verifier: &dyn selfsign::Verifier,
         hasher: &mut dyn selfhash::Hasher,
     ) {
-        assert!(verifier.key_type() == signature_algorithm.key_type());
-        assert!(signature_algorithm
-            .message_digest_hash_function()
-            .equals(hasher.hash_function()));
-        // NOTE: This is a generic JSON-serialization-based implementation.
-        let mut c = self.clone();
-        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
-        c.set_self_signature_verifier_slots_to(verifier);
-        // Not sure if serde_json always produces the same output... TODO: Use JSONC or JCS probably
-        serde_json::to_writer(hasher, &c).expect("pass");
+        selfsign::write_digest_data_using_jcs(self, signature_algorithm, verifier, hasher);
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
@@ -877,16 +851,7 @@ impl selfsign::SelfSignable for TestData {
         verifier: &dyn selfsign::Verifier,
         hasher: &mut dyn selfhash::Hasher,
     ) {
-        assert!(verifier.key_type() == signature_algorithm.key_type());
-        assert!(signature_algorithm
-            .message_digest_hash_function()
-            .equals(hasher.hash_function()));
-        // NOTE: This is a generic JSON-serialization-based implementation.
-        let mut c = self.clone();
-        c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
-        c.set_self_signature_verifier_slots_to(verifier);
-        // Not sure if serde_json always produces the same output... TODO: Use JSONC or JCS probably
-        serde_json::to_writer(hasher, &c).expect("pass");
+        selfsign::write_digest_data_using_jcs(self, signature_algorithm, verifier, hasher);
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
@@ -917,11 +882,7 @@ impl selfsign::SelfSignable for TestData {
 
 impl selfhash::SelfHashable for TestData {
     fn write_digest_data(&self, hasher: &mut dyn selfhash::Hasher) {
-        // NOTE: This is a generic JSON-serialization-based implementation.
-        let mut c = self.clone();
-        c.set_self_hash_slots_to(hasher.hash_function().placeholder_hash());
-        // Not sure if serde_json always produces the same output... TODO: Use JSONC or JCS probably
-        serde_json::to_writer(hasher, &c).expect("pass");
+        selfhash::write_digest_data_using_jcs(self, hasher);
     }
     fn self_hash_oi<'a, 'b: 'a>(
         &'b self,

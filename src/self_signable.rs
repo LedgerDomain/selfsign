@@ -1,8 +1,50 @@
 use crate::{Signature, SignatureAlgorithm, Signer, Verifier};
 
+/// This is the canonical implementation of the SelfHashable::write_digest_data method for when the
+/// SelfHashable type implements Clone and the desired desired serialization format is
+/// JSON Canonicalization Scheme (JCS).  Simply call this method from your implementation of
+/// SelfHashable::write_digest_data.
+#[cfg(feature = "jcs")]
+pub fn write_digest_data_using_jcs<S: Clone + SelfSignable + serde::Serialize>(
+    self_signable: &S,
+    signature_algorithm: &dyn SignatureAlgorithm,
+    verifier: &dyn Verifier,
+    mut hasher: &mut dyn selfhash::Hasher,
+) {
+    assert!(verifier.key_type() == signature_algorithm.key_type());
+    assert!(signature_algorithm
+        .message_digest_hash_function()
+        .equals(hasher.hash_function()));
+    let mut c = self_signable.clone();
+    c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
+    c.set_self_signature_verifier_slots_to(verifier);
+    // Use JCS to produce canonical output.  The `&mut hasher` ridiculousness is because
+    // serde_json_canonicalizer::to_writer uses a generic impl of std::io::Write and therefore
+    // implicitly requires the `Sized` trait.  Therefore passing in a reference to the reference
+    // achieves the desired effect.
+    serde_json_canonicalizer::to_writer(&c, &mut hasher).unwrap();
+}
+
+/// This trait allows a self-signing procedure to be defined for a data type.  The data type must implement
+/// the following required methods:
+/// - self_signature_oi: defines the self-signature slots.
+/// - set_self_signature_slots_to: sets all the self-signature slots to the given signature.
+/// - self_signature_verifier_oi: defines the self-signature verifier slots.
+/// - set_self_signature_verifier_slots_to: sets all the self-signature verifier slots to the given verifier.
+/// - write_digest_data: writes the data to be hashed into the hasher, using the appropriate placeholders
+///   for the self-signature slots and the self-signature verifier slots).
+///
+/// An easy default for the implementation of write_digest_data is provided by the
+/// write_digest_data_with_jcs function, which can be called from your implementation of
+/// write_digest_data if your type implements Clone and serde::Serialize and the desired serialization
+/// format is JSON Canonicalization Scheme (JCS).
 pub trait SelfSignable {
     /// This should feed the content of this object into the hasher in the order that it should be hashed,
-    /// writing placeholders for any self-signature slots that have not yet been computed.
+    /// writing appropriate placeholders for the self-signature slots and the self-signature verifier slots.
+    ///
+    /// If the implementing type implements Clone and serde::Serialize, and the desired serialization format
+    /// is JSON Canonicalization Scheme (JCS), then you can simply call write_digest_data_using_jcs from
+    /// your implementation of this method.
     fn write_digest_data(
         &self,
         signature_algorithm: &dyn SignatureAlgorithm,
