@@ -1,6 +1,7 @@
 use crate::{SignatureAlgorithm, ED25519_SHA_512, SECP256K1_SHA_256};
 
-#[derive(Clone, Copy, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum KeyType {
     Ed25519,
     Secp256k1,

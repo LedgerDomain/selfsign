@@ -92,7 +92,7 @@ impl Verifier for VerifierBytes<'_> {
     }
     fn verify_digest(
         &self,
-        message_digest_b: Box<dyn selfhash::Hasher>,
+        _message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
     ) -> Result<(), &'static str> {
         if self.key_type != signature.signature_algorithm().key_type() {
@@ -109,7 +109,7 @@ impl Verifier for VerifierBytes<'_> {
                         ed25519_dalek::Signature::try_from(&signature.to_signature_bytes())?;
                     ed25519_dalek_verifying_key
                         .verify_prehashed(
-                            *message_digest_b
+                            *_message_digest_b
                                 .into_any()
                                 .downcast::<sha2::Sha512>()
                                 .expect("programmer error: message digest must be sha2::Sha512"),
@@ -131,7 +131,7 @@ impl Verifier for VerifierBytes<'_> {
                         k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())?;
                     k256::ecdsa::signature::DigestVerifier::verify_digest(
                         &k256_verifying_key,
-                        *message_digest_b
+                        *_message_digest_b
                             .into_any()
                             .downcast::<sha2::Sha256>()
                             .expect("programmer error: message digest must be sha2::Sha256"),

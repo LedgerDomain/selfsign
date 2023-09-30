@@ -19,7 +19,6 @@ pub struct Ed25519_SHA512;
 
 pub const ED25519_SHA_512: Ed25519_SHA512 = Ed25519_SHA512;
 
-#[cfg(feature = "ed25519-dalek")]
 impl SignatureAlgorithm for Ed25519_SHA512 {
     fn as_any(&self) -> &dyn std::any::Any {
         self

@@ -18,6 +18,8 @@ mod signer;
 mod verifier;
 mod verifier_bytes;
 
+#[cfg(feature = "jcs")]
+pub use crate::self_signable::write_digest_data_using_jcs;
 pub use crate::{
     base64::{base64_decode_264_bits, base64_encode_264_bits},
     ed25519_sha512::{Ed25519_SHA512, ED25519_SHA_512},
@@ -27,7 +29,7 @@ pub use crate::{
     named_signature_algorithm::NamedSignatureAlgorithm,
     secp256k1_sha256::{Secp256k1_SHA256, SECP256K1_SHA_256},
     self_sign_and_hashable::SelfSignAndHashable,
-    self_signable::{write_digest_data_using_jcs, SelfSignable},
+    self_signable::SelfSignable,
     signature::Signature,
     signature_algorithm::SignatureAlgorithm,
     signature_bytes::SignatureBytes,

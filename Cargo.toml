@@ -1,17 +1,19 @@
 [package]
 name = "selfsign"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Victor Dods <victor.dods@gmail.com>"]
 edition = "2021"
 
 [features]
-# This feature provides impls of selfsign traits for ed25519-dalek crate types.
+# This feature provides impls of selfsign traits for ed25519-dalek crate types
+# ed25519_dalek::{Signature, SigningKey, VerifyingKey}.
 ed25519-dalek = ["dep:ed25519-dalek", "selfhash/sha-512", "dep:sha2"]
 # This provides the default implementation of the SelfSelfsignable::write_digest_data method for when a
 # SelfSelfsignable implements Clone and the desired serialization format is JSON Canonicalization Scheme (JCS).
 jcs = ["selfhash/jcs", "dep:serde_json_canonicalizer"]
-# This feature provides impls of selfsign traits for k256 crate types (k256 is also called secp256k1).
-k256 = ["dep:k256", "selfhash/sha-256", "dep:signature"]
+# This feature provides impls of selfsign traits for k256 crate types (k256 is also called secp256k1)
+# k256::ecdsa::{Signature, SigningKey, VerifyingKey}.
+k256 = ["dep:k256", "dep:sha2", "selfhash/sha-256", "dep:signature"]
 # This enables serde support for for KERISignature, KERIVerifier, NamedSignatureAlgorithm, SignatureBytes,
 # and VerifierBytes types.
 serde = ["dep:serde", "dep:serde_with"]
@@ -32,7 +34,7 @@ k256 = { version = "0.13.1", optional = true, default-features = false, features
     "alloc",
     "ecdsa",
 ] }
-selfhash = { version = "0.1.1", optional = true }
+selfhash = "0.1.2"
 serde = { version = "1.0", optional = true, default-features = false, features = [
     "alloc",
     "derive",
@@ -50,7 +52,7 @@ ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 k256 = { version = "0.13.1" }
 time = { version = "0.3.29", features = ["serde"] }
 rand = { version = "0.8" }
-selfhash = { version = "0.1.1", features = [
+selfhash = { version = "0.1.2", features = [
     "blake3",
     "jcs",
     "serde",
@@ -62,4 +64,4 @@ serde_json_canonicalizer = "0.2.0"
 serial_test = "2.0.0"
 
 [patch.crates-io]
-selfhash = { git = "https://github.com/LedgerDomain/selfhash", rev = "c7660e93a27dfcbcaf3652631badffa232c73e8a" }
+selfhash = { git = "https://github.com/LedgerDomain/selfhash", rev = "37659f9f1b572b5fc1f835c51d69bb7eba45679f" }
