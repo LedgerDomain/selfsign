@@ -73,6 +73,12 @@ impl<'a> VerifierBytes<'a> {
     }
 }
 
+impl AsRef<[u8]> for VerifierBytes<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.verifying_key_byte_v.as_ref()
+    }
+}
+
 impl std::ops::Deref for VerifierBytes<'_> {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {

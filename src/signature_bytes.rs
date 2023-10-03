@@ -45,6 +45,12 @@ impl<'a> SignatureBytes<'a> {
     }
 }
 
+impl AsRef<[u8]> for SignatureBytes<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.signature_byte_v.as_ref()
+    }
+}
+
 impl std::ops::Deref for SignatureBytes<'_> {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {

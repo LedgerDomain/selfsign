@@ -7,3 +7,4 @@
 -   Implement a proc macro for deriving `SelfSignable` on structures.
 -   Implement a proc macro for deriving `SelfSignAndHashable` on structures.
 -   Add specific test vectors to ensure the specific encoding/decoding of the KERIVerifier and KERISignature types are correct.
+-   Change `SelfSignable::write_digest_data` to take `&mut dyn std::io::Write` instead of `&mut dyn Hasher`, so that it could e.g. be printed to logs or `format!` macro.
