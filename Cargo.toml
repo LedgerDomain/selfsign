@@ -1,6 +1,6 @@
 [package]
 name = "selfsign"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Victor Dods <victor.dods@gmail.com>"]
 edition = "2021"
 
