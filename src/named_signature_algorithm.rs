@@ -26,6 +26,26 @@ impl NamedSignatureAlgorithm {
     pub const SECP256K1_SHA_256: NamedSignatureAlgorithm =
         NamedSignatureAlgorithm(SECP256K1_SHA_256_STR);
 
+    /// Attempt to parse a JWS alg string into a NamedSignatureAlgorithm.
+    /// See https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
+    pub fn try_from_jws_alg(jws_alg: &str) -> Result<Self, &'static str> {
+        match jws_alg {
+            "EdDSA" => Ok(Self::ED25519_SHA_512),
+            "ES256K" => Ok(Self::SECP256K1_SHA_256),
+            _ => Err("unrecognized JWS alg"),
+        }
+    }
+    /// Convert this NamedSignatureAlgorithm into a JWS alg string.
+    /// See https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
+    pub fn as_jws_alg(&self) -> &'static str {
+        match self.0 {
+            ED25519_SHA_512_STR => "EdDSA",
+            SECP256K1_SHA_256_STR => "ES256K",
+            _ => {
+                panic!("programmer error: unrecognized signature algorithm name");
+            }
+        }
+    }
     pub fn try_from_keri_prefix(keri_prefix: &str) -> Result<Self, &'static str> {
         match keri_prefix {
             "0B" => Ok(Self::ED25519_SHA_512),

@@ -2,6 +2,25 @@ use std::collections::HashMap;
 
 #[test]
 #[serial_test::serial]
+fn test_jws_alg() {
+    for (named_signature_algorithm, jws_alg) in [
+        (selfsign::NamedSignatureAlgorithm::ED25519_SHA_512, "EdDSA"),
+        (
+            selfsign::NamedSignatureAlgorithm::SECP256K1_SHA_256,
+            "ES256K",
+        ),
+    ] {
+        assert_eq!(named_signature_algorithm.as_jws_alg(), jws_alg);
+        assert_eq!(
+            selfsign::NamedSignatureAlgorithm::try_from_jws_alg(jws_alg).expect("pass"),
+            named_signature_algorithm
+        );
+    }
+    assert!(selfsign::NamedSignatureAlgorithm::try_from_jws_alg("blah").is_err());
+}
+
+#[test]
+#[serial_test::serial]
 fn test_signer_verifier() {
     let ed25519_signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
     let ed25519_verifying_key = ed25519_signing_key.verifying_key();
