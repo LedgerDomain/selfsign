@@ -18,7 +18,7 @@ pub trait SignatureAlgorithm {
     fn keri_signature_len(&self) -> usize;
     /// Returns the KERISignature form of the signature to be used as the placeholder when generating
     /// the digest of the self-signing object.
-    fn placeholder_keri_signature(&self) -> KERISignature<'static>;
+    fn placeholder_keri_signature(&self) -> &'static KERISignature;
     /// Returns the SignatureBytes form of the signature to be used as the placeholder when generating
     /// the digest of the self-signing object.
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static>;

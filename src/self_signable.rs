@@ -16,7 +16,7 @@ pub fn write_digest_data_using_jcs<S: Clone + SelfSignable + serde::Serialize>(
         .message_digest_hash_function()
         .equals(hasher.hash_function()));
     let mut c = self_signable.clone();
-    c.set_self_signature_slots_to(&signature_algorithm.placeholder_keri_signature());
+    c.set_self_signature_slots_to(signature_algorithm.placeholder_keri_signature());
     c.set_self_signature_verifier_slots_to(verifier);
     // Use JCS to produce canonical output.  The `&mut hasher` ridiculousness is because
     // serde_json_canonicalizer::to_writer uses a generic impl of std::io::Write and therefore

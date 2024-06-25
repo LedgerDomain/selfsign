@@ -25,7 +25,7 @@ impl<'a> VerifierBytes<'a> {
             verifying_key_byte_v: Cow::Owned(self.verifying_key_byte_v.to_vec()),
         }
     }
-    pub fn to_keri_verifier(&self) -> Result<KERIVerifier<'static>, &'static str> {
+    pub fn to_keri_verifier(&self) -> Result<KERIVerifier, &'static str> {
         if self.verifying_key_byte_v.len() != self.key_type.key_bytes_len() {
             return Err(
                 "verifying_key_byte_v length does not match expected bytes length of KeyType",
@@ -69,7 +69,7 @@ impl<'a> VerifierBytes<'a> {
                 panic!("this should not be possible");
             }
         };
-        Ok(KERIVerifier(Cow::Owned(keri_verifier_string)))
+        Ok(KERIVerifier(keri_verifier_string))
     }
 }
 
@@ -90,9 +90,11 @@ impl Verifier for VerifierBytes<'_> {
     fn key_type(&self) -> KeyType {
         self.key_type
     }
+    /// This won't allocate.
     fn to_verifier_bytes(&self) -> VerifierBytes {
         self.clone()
     }
+    /// This will allocate, because VerifierBytes is a byte array representation and must be converted into KERIVerifier.
     fn to_keri_verifier(&self) -> KERIVerifier {
         self.to_keri_verifier().expect("programmer error")
     }

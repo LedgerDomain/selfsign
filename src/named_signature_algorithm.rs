@@ -100,7 +100,7 @@ impl SignatureAlgorithm for NamedSignatureAlgorithm {
     fn keri_signature_len(&self) -> usize {
         self.as_signature_algorithm().keri_signature_len()
     }
-    fn placeholder_keri_signature(&self) -> KERISignature<'static> {
+    fn placeholder_keri_signature(&self) -> &'static KERISignature {
         self.as_signature_algorithm().placeholder_keri_signature()
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {

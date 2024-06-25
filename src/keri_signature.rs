@@ -7,23 +7,14 @@ use crate::{
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, derive_more::Display, Eq, Hash, PartialEq)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde_with::DeserializeFromStr, serde_with::SerializeDisplay)
-)]
-pub struct KERISignature<'a>(pub(crate) Cow<'a, str>);
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct KERISignature(pub(crate) String);
 
-impl<'a> KERISignature<'a> {
-    pub fn into_owned(self) -> KERISignature<'static> {
-        KERISignature(Cow::Owned(self.0.into_owned()))
-    }
-    pub fn to_owned(&self) -> KERISignature<'static> {
-        KERISignature(Cow::Owned(self.0.to_string()))
-    }
-    pub fn keri_prefix<'b: 'a>(&'b self) -> &'a str {
+impl KERISignature {
+    pub fn keri_prefix(&self) -> &str {
         &self.0[..2]
     }
-    pub fn data<'b: 'a>(&'b self) -> &'a str {
+    pub fn data(&self) -> &str {
         &self.0[2..]
     }
     pub fn to_signature_bytes(&self) -> SignatureBytes {
@@ -51,38 +42,59 @@ impl<'a> KERISignature<'a> {
     }
 }
 
-impl std::ops::Deref for KERISignature<'_> {
+impl std::ops::Deref for KERISignature {
     type Target = str;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl std::str::FromStr for KERISignature<'_> {
+impl std::str::FromStr for KERISignature {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() < 2 {
-            return Err("KERISignature::from_str failed: too short");
-        }
-        if !s.is_ascii() {
-            return Err("KERISignature::from_str failed: not ASCII");
-        }
-        let keri_prefix = &s[..2];
-        let named_signature_algorithm = NamedSignatureAlgorithm::try_from_keri_prefix(keri_prefix)?;
-        match named_signature_algorithm.signature_bytes_len() {
-            64 => {
-                let mut buffer = [0u8; 66];
-                selfhash::base64_decode_512_bits(&s[2..], &mut buffer)?;
-                Ok(Self(Cow::Owned(s.to_string())))
-            }
-            _ => {
-                panic!("this should not be possible");
-            }
-        }
+        validate_keri_signature_string(s)?;
+        Ok(Self(s.to_string()))
     }
 }
 
-impl Signature for KERISignature<'_> {
+impl TryFrom<&str> for KERISignature {
+    type Error = &'static str;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        validate_keri_signature_string(value)?;
+        Ok(Self(value.to_string()))
+    }
+}
+
+impl<'a> TryFrom<String> for KERISignature {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        validate_keri_signature_string(value.as_str())?;
+        Ok(Self(value))
+    }
+}
+
+fn validate_keri_signature_string(s: &str) -> Result<(), &'static str> {
+    if s.len() < 2 {
+        return Err("string too short to be a KERISignature");
+    }
+    if !s.is_ascii() {
+        return Err("KERISignature strings must contain only ASCII chars");
+    }
+    let keri_prefix = &s[..2];
+    let named_signature_algorithm = NamedSignatureAlgorithm::try_from_keri_prefix(keri_prefix)?;
+    match named_signature_algorithm.signature_bytes_len() {
+        64 => {
+            let mut buffer = [0u8; 66];
+            selfhash::base64_decode_512_bits(&s[2..], &mut buffer)?;
+        }
+        _ => {
+            panic!("this should not be possible");
+        }
+    }
+    Ok(())
+}
+
+impl Signature for KERISignature {
     /// This assumes the prefix is 2 chars.
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
         match self.keri_prefix() {
@@ -91,6 +103,7 @@ impl Signature for KERISignature<'_> {
             _ => panic!("this should not be possible"),
         }
     }
+    /// This will allocate, because it must convert an ASCII string representation into bytes.
     fn to_signature_bytes(&self) -> SignatureBytes {
         self.to_signature_bytes()
     }

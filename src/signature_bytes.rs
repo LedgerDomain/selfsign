@@ -26,7 +26,7 @@ impl<'a> SignatureBytes<'a> {
             signature_byte_v: Cow::Owned(self.signature_byte_v.to_vec()),
         }
     }
-    pub fn to_keri_signature(&self) -> KERISignature<'static> {
+    pub fn to_keri_signature(&self) -> KERISignature {
         // TODO: Need to use different sizes based on SignatureAlgorithm.
         let mut buffer = [0u8; 86];
         let signature = selfhash::base64_encode_512_bits(
@@ -41,7 +41,7 @@ impl<'a> SignatureBytes<'a> {
             self.named_signature_algorithm.keri_prefix(),
             signature
         );
-        KERISignature(Cow::Owned(keri_signature_string))
+        KERISignature(keri_signature_string)
     }
 }
 
@@ -68,9 +68,11 @@ impl Signature for SignatureBytes<'_> {
             }
         }
     }
+    /// This won't allocate.
     fn to_signature_bytes(&self) -> SignatureBytes {
         self.clone()
     }
+    /// This will allocate, because of the need to convert bytes to an ASCII string representation.
     fn to_keri_signature(&self) -> KERISignature {
         self.to_keri_signature()
     }

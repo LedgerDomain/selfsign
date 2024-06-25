@@ -2,10 +2,17 @@ use std::borrow::Cow;
 
 use crate::{KERISignature, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes};
 
-pub const ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
-    KERISignature(Cow::Borrowed(
-        "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    ));
+// This needs the str equivalent of KERISignature before it can work.
+// pub const ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
+//     "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+//         .to_string(),
+// );
+
+// TODO: Put this back into a const once the str equivalent of KERISignature is available, then remove the lazy_static depedendency.
+lazy_static::lazy_static! {
+    pub static ref ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
+        "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string());
+}
 
 pub const ED25519_SHA_512_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
     named_signature_algorithm: NamedSignatureAlgorithm::ED25519_SHA_512,
@@ -49,8 +56,8 @@ impl SignatureAlgorithm for Ed25519_SHA512 {
     fn keri_signature_len(&self) -> usize {
         88
     }
-    fn placeholder_keri_signature(&self) -> KERISignature<'static> {
-        ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER
+    fn placeholder_keri_signature(&self) -> &'static KERISignature {
+        &ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {
         ED25519_SHA_512_SIGNATURE_BYTES_PLACEHOLDER

@@ -2,6 +2,7 @@ use crate::{
     KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, SignatureAlgorithm,
     SignatureBytes, Signer, Verifier, VerifierBytes, SECP256K1_SHA_256,
 };
+use std::borrow::Cow;
 
 impl Signer for k256::ecdsa::SigningKey {
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
@@ -41,12 +42,14 @@ impl Signature for k256::ecdsa::Signature {
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
         &SECP256K1_SHA_256
     }
+    /// This will allocate, because of the way the k256 crate returns the signature bytes.
     fn to_signature_bytes(&self) -> SignatureBytes {
         SignatureBytes {
             named_signature_algorithm: self.signature_algorithm().named_signature_algorithm(),
-            signature_byte_v: self.to_bytes().to_vec().into(),
+            signature_byte_v: Cow::Owned(self.to_bytes().to_vec()),
         }
     }
+    /// This will allocate because it must convert from bytes to an ASCII string representation.
     fn to_keri_signature(&self) -> KERISignature {
         self.to_signature_bytes().to_keri_signature()
     }
@@ -96,13 +99,15 @@ impl Verifier for k256::ecdsa::VerifyingKey {
     fn key_type(&self) -> KeyType {
         KeyType::Secp256k1
     }
+    /// This will allocate, because of how k256 crate returns the verifying key bytes.
     fn to_verifier_bytes(&self) -> VerifierBytes {
         let verifying_key_byte_v = self.to_sec1_bytes().to_vec();
         VerifierBytes {
             key_type: self.key_type(),
-            verifying_key_byte_v: verifying_key_byte_v.into(),
+            verifying_key_byte_v: Cow::Owned(verifying_key_byte_v),
         }
     }
+    /// This will allocate, because the verifier comes from a byte array and must be converted into a KERIVerifier.
     fn to_keri_verifier(&self) -> KERIVerifier {
         self.to_verifier_bytes()
             .to_keri_verifier()

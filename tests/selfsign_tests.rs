@@ -134,17 +134,17 @@ pub struct FancyData {
     /// Self-signature of the previous FancyData.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "previous")]
-    pub previous_o: Option<selfsign::KERISignature<'static>>,
+    pub previous_o: Option<selfsign::KERISignature>,
     pub name: String,
     pub stuff_count: u32,
     pub data_byte_v: Vec<u8>,
     // #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "self_signature_verifier")]
-    pub self_signature_verifier_o: Option<selfsign::KERIVerifier<'static>>,
+    pub self_signature_verifier_o: Option<selfsign::KERIVerifier>,
     // pub self_signature_verifier_o: Option<selfsign::VerifierBytes<'static>>,
     // #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "self_signature")]
-    pub self_signature_o: Option<selfsign::KERISignature<'static>>,
+    pub self_signature_o: Option<selfsign::KERISignature>,
     // pub self_signature_o: Option<selfsign::SignatureBytes<'static>>,
 }
 
@@ -167,7 +167,7 @@ impl selfsign::SelfSignable for FancyData {
         ))
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        self.self_signature_o = Some(signature.to_keri_signature().into_owned());
+        self.self_signature_o = Some(signature.to_keri_signature());
         // self.self_signature_o = Some(signature.to_signature_bytes().into_owned());
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
@@ -180,7 +180,7 @@ impl selfsign::SelfSignable for FancyData {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
         // self.verifier_o = Some(verifier.to_verifier_bytes().into_owned());
     }
 }
@@ -261,7 +261,7 @@ pub struct URIWithSignature {
     // This is the path before the signature, which includes the leading and trailing slash,
     // and therefore might just be equal to "/".
     pub pre_signature_path: String,
-    pub signature: selfsign::KERISignature<'static>,
+    pub signature: selfsign::KERISignature,
     pub query_o: Option<String>,
     pub fragment_o: Option<String>,
 }
@@ -357,7 +357,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     }
     /// The root KeyMaterial returns None here.  A non-root KeyMaterial returns the self-signature
     /// of the previous KeyMaterial.
-    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature<'static>>;
+    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature>;
     /// This is the version ID of this KeyMaterial.  It must start at 0 for the root KeyMaterial
     /// and increase by exactly one per KeyMaterial update.
     fn version_id(&self) -> u32;
@@ -365,19 +365,19 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     /// no longer current.
     fn valid_from(&self) -> time::OffsetDateTime;
     /// List of verifiers for the authentication key purpose.
-    fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>];
+    fn authentication_v(&self) -> &[selfsign::KERIVerifier];
     /// List of verifiers for the assertion key purpose.
-    fn assertion_v(&self) -> &[selfsign::KERIVerifier<'static>];
+    fn assertion_v(&self) -> &[selfsign::KERIVerifier];
     /// List of verifiers for the key exchange key purpose.
-    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier<'static>];
+    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier];
     /// List of verifiers for the capability invocation key purpose.
-    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier<'static>];
+    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier];
     /// List of verifiers for the capability delegation key purpose.
-    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier<'static>];
+    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier];
     /// This verifies this KeyMaterial relative to its previous KeyMaterial, or to itself if it's the root.
     fn verify_nonrecursive(
         &self,
-        key_material_m: &HashMap<selfsign::KERISignature<'static>, &dyn KeyMaterial>,
+        key_material_m: &HashMap<selfsign::KERISignature, &dyn KeyMaterial>,
     ) -> Result<(), &'static str> {
         // First, verify that this KeyMaterial is properly self-signed.
         self.verify_self_signatures()?;
@@ -436,7 +436,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     }
     fn verify_recursive(
         &self,
-        key_material_m: &HashMap<selfsign::KERISignature<'static>, &dyn KeyMaterial>,
+        key_material_m: &HashMap<selfsign::KERISignature, &dyn KeyMaterial>,
     ) -> Result<(), &'static str> {
         self.verify_nonrecursive(key_material_m)?;
         if let Some(previous_key_material_self_signature) =
@@ -456,22 +456,22 @@ pub struct KeyMaterialRoot {
     pub uri: URIWithSignature,
     pub version_id: u32,
     pub valid_from: time::OffsetDateTime,
-    pub authentication_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub assertion_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub key_exchange_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub capability_invocation_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub capability_delegation_v: Vec<selfsign::KERIVerifier<'static>>,
+    pub authentication_v: Vec<selfsign::KERIVerifier>,
+    pub assertion_v: Vec<selfsign::KERIVerifier>,
+    pub key_exchange_v: Vec<selfsign::KERIVerifier>,
+    pub capability_invocation_v: Vec<selfsign::KERIVerifier>,
+    pub capability_delegation_v: Vec<selfsign::KERIVerifier>,
     #[serde(rename = "self_signature_verifier")]
-    pub self_signature_verifier_o: Option<selfsign::KERIVerifier<'static>>,
+    pub self_signature_verifier_o: Option<selfsign::KERIVerifier>,
     #[serde(rename = "self_signature")]
-    pub self_signature_o: Option<selfsign::KERISignature<'static>>,
+    pub self_signature_o: Option<selfsign::KERISignature>,
 }
 
 impl KeyMaterial for KeyMaterialRoot {
     fn uri(&self) -> &URIWithSignature {
         &self.uri
     }
-    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature<'static>> {
+    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature> {
         None
     }
     fn version_id(&self) -> u32 {
@@ -480,19 +480,19 @@ impl KeyMaterial for KeyMaterialRoot {
     fn valid_from(&self) -> time::OffsetDateTime {
         self.valid_from
     }
-    fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn authentication_v(&self) -> &[selfsign::KERIVerifier] {
         &self.authentication_v
     }
-    fn assertion_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn assertion_v(&self) -> &[selfsign::KERIVerifier] {
         &self.assertion_v
     }
-    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier] {
         &self.key_exchange_v
     }
-    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier] {
         &self.capability_invocation_v
     }
-    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier] {
         &self.capability_delegation_v
     }
 }
@@ -520,7 +520,7 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
         )
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        let keri_signature = signature.to_keri_signature().into_owned();
+        let keri_signature = signature.to_keri_signature();
         self.uri.signature = keri_signature.clone();
         self.self_signature_o = Some(keri_signature);
         // self.self_signature_o = Some(signature.to_signature_bytes().into_owned());
@@ -535,32 +535,32 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
     }
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct KeyMaterialNonRoot {
     pub uri: URIWithSignature,
-    pub previous_key_material_self_signature: selfsign::KERISignature<'static>,
+    pub previous_key_material_self_signature: selfsign::KERISignature,
     pub version_id: u32,
     pub valid_from: time::OffsetDateTime,
-    pub authentication_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub assertion_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub key_exchange_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub capability_invocation_v: Vec<selfsign::KERIVerifier<'static>>,
-    pub capability_delegation_v: Vec<selfsign::KERIVerifier<'static>>,
+    pub authentication_v: Vec<selfsign::KERIVerifier>,
+    pub assertion_v: Vec<selfsign::KERIVerifier>,
+    pub key_exchange_v: Vec<selfsign::KERIVerifier>,
+    pub capability_invocation_v: Vec<selfsign::KERIVerifier>,
+    pub capability_delegation_v: Vec<selfsign::KERIVerifier>,
     #[serde(rename = "self_signature_verifier")]
-    pub self_signature_verifier_o: Option<selfsign::KERIVerifier<'static>>,
+    pub self_signature_verifier_o: Option<selfsign::KERIVerifier>,
     #[serde(rename = "self_signature")]
-    pub self_signature_o: Option<selfsign::KERISignature<'static>>,
+    pub self_signature_o: Option<selfsign::KERISignature>,
 }
 
 impl KeyMaterial for KeyMaterialNonRoot {
     fn uri(&self) -> &URIWithSignature {
         &self.uri
     }
-    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature<'static>> {
+    fn previous_key_material_self_signature_o(&self) -> Option<&selfsign::KERISignature> {
         Some(&self.previous_key_material_self_signature)
     }
     fn version_id(&self) -> u32 {
@@ -569,19 +569,19 @@ impl KeyMaterial for KeyMaterialNonRoot {
     fn valid_from(&self) -> time::OffsetDateTime {
         self.valid_from
     }
-    fn authentication_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn authentication_v(&self) -> &[selfsign::KERIVerifier] {
         &self.authentication_v
     }
-    fn assertion_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn assertion_v(&self) -> &[selfsign::KERIVerifier] {
         &self.assertion_v
     }
-    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn key_exchange_v(&self) -> &[selfsign::KERIVerifier] {
         &self.key_exchange_v
     }
-    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn capability_invocation_v(&self) -> &[selfsign::KERIVerifier] {
         &self.capability_invocation_v
     }
-    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier<'static>] {
+    fn capability_delegation_v(&self) -> &[selfsign::KERIVerifier] {
         &self.capability_delegation_v
     }
 }
@@ -605,7 +605,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
         ))
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        let keri_signature = signature.to_keri_signature().into_owned();
+        let keri_signature = signature.to_keri_signature();
         self.self_signature_o = Some(keri_signature);
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
@@ -618,7 +618,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
     }
 }
 
@@ -626,8 +626,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
 #[serial_test::serial]
 fn test_multiple_self_signature_slots() {
     // This will hold each of the KeyMaterial values in the microledger, keyed by their self-signature.
-    let mut key_material_m: HashMap<selfsign::KERISignature<'static>, &dyn KeyMaterial> =
-        HashMap::new();
+    let mut key_material_m: HashMap<selfsign::KERISignature, &dyn KeyMaterial> = HashMap::new();
 
     let mut csprng = rand::rngs::OsRng;
     let authentication_signing_key_0 = ed25519_dalek::SigningKey::generate(&mut csprng);
@@ -646,33 +645,23 @@ fn test_multiple_self_signature_slots() {
                 pre_signature_path: "/identity/".into(),
                 signature: capability_invocation_signing_key_0
                     .signature_algorithm()
-                    .placeholder_keri_signature(),
+                    .placeholder_keri_signature()
+                    .clone(),
                 // TODO: Include version_id and self_sig as query params
                 query_o: None,
                 fragment_o: None,
             },
             version_id: 0,
             valid_from: time::OffsetDateTime::now_utc(),
-            authentication_v: vec![authentication_signing_key_0
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
-            assertion_v: vec![assertion_signing_key_0
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
-            key_exchange_v: vec![key_exchange_signing_key_0
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+            authentication_v: vec![authentication_signing_key_0.verifier().to_keri_verifier()],
+            assertion_v: vec![assertion_signing_key_0.verifier().to_keri_verifier()],
+            key_exchange_v: vec![key_exchange_signing_key_0.verifier().to_keri_verifier()],
             capability_invocation_v: vec![capability_invocation_signing_key_0
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             capability_delegation_v: vec![capability_delegation_signing_key_0
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -716,26 +705,15 @@ fn test_multiple_self_signature_slots() {
                 .clone(),
             version_id: key_material_0.version_id + 1,
             valid_from: time::OffsetDateTime::now_utc(),
-            authentication_v: vec![authentication_signing_key_1
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
-            assertion_v: vec![assertion_signing_key_1
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
-            key_exchange_v: vec![key_exchange_signing_key_1
-                .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+            authentication_v: vec![authentication_signing_key_1.verifier().to_keri_verifier()],
+            assertion_v: vec![assertion_signing_key_1.verifier().to_keri_verifier()],
+            key_exchange_v: vec![key_exchange_signing_key_1.verifier().to_keri_verifier()],
             capability_invocation_v: vec![capability_invocation_signing_key_1
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             capability_delegation_v: vec![capability_delegation_signing_key_1
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -779,43 +757,23 @@ fn test_multiple_self_signature_slots() {
             version_id: key_material_1.version_id + 1,
             valid_from: time::OffsetDateTime::now_utc(),
             authentication_v: vec![
-                authentication_signing_key_1
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
-                authentication_signing_key_2
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
+                authentication_signing_key_1.verifier().to_keri_verifier(),
+                authentication_signing_key_2.verifier().to_keri_verifier(),
             ],
             assertion_v: vec![
-                assertion_signing_key_1
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
-                assertion_signing_key_2
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
+                assertion_signing_key_1.verifier().to_keri_verifier(),
+                assertion_signing_key_2.verifier().to_keri_verifier(),
             ],
             key_exchange_v: vec![
-                key_exchange_signing_key_1
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
-                key_exchange_signing_key_2
-                    .verifier()
-                    .to_keri_verifier()
-                    .into_owned(),
+                key_exchange_signing_key_1.verifier().to_keri_verifier(),
+                key_exchange_signing_key_2.verifier().to_keri_verifier(),
             ],
             capability_invocation_v: vec![capability_invocation_signing_key_1
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             capability_delegation_v: vec![capability_delegation_signing_key_1
                 .verifier()
-                .to_keri_verifier()
-                .into_owned()],
+                .to_keri_verifier()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -858,9 +816,9 @@ fn test_stuff() {
 pub struct TestData {
     pub name: String,
     pub data: Vec<u8>,
-    pub self_signature_verifier_o: Option<selfsign::KERIVerifier<'static>>,
-    pub self_signature_o: Option<selfsign::KERISignature<'static>>,
-    pub self_hash_o: Option<selfhash::KERIHash<'static>>,
+    pub self_signature_verifier_o: Option<selfsign::KERIVerifier>,
+    pub self_signature_o: Option<selfsign::KERISignature>,
+    pub self_hash_o: Option<selfhash::KERIHash>,
 }
 
 impl selfsign::SelfSignable for TestData {
@@ -882,7 +840,7 @@ impl selfsign::SelfSignable for TestData {
         ))
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        let keri_signature = signature.to_keri_signature().into_owned();
+        let keri_signature = signature.to_keri_signature();
         self.self_signature_o = Some(keri_signature);
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
@@ -895,7 +853,7 @@ impl selfsign::SelfSignable for TestData {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
     }
 }
 
@@ -913,7 +871,7 @@ impl selfhash::SelfHashable for TestData {
         ))
     }
     fn set_self_hash_slots_to(&mut self, hash: &dyn selfhash::Hash) {
-        let keri_hash = hash.to_keri_hash().into_owned();
+        let keri_hash = hash.to_keri_hash();
         self.self_hash_o = Some(keri_hash);
     }
 }

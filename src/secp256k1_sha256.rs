@@ -2,10 +2,16 @@ use std::borrow::Cow;
 
 use crate::{KERISignature, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes};
 
-pub const SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature<'static> =
-    KERISignature(Cow::Borrowed(
-        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    ));
+// pub const SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
+//     "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+//         .to_string(),
+// );
+
+// TODO: Put this back into a const once the str equivalent of KERISignature is available, then remove the lazy_static depedendency.
+lazy_static::lazy_static! {
+    pub static ref SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
+        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string());
+}
 
 pub const SECP256K1_SHA_256_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
     named_signature_algorithm: NamedSignatureAlgorithm::SECP256K1_SHA_256,
@@ -49,8 +55,8 @@ impl SignatureAlgorithm for Secp256k1_SHA256 {
     fn keri_signature_len(&self) -> usize {
         88
     }
-    fn placeholder_keri_signature(&self) -> KERISignature<'static> {
-        SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER
+    fn placeholder_keri_signature(&self) -> &'static KERISignature {
+        &SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {
         SECP256K1_SHA_256_SIGNATURE_BYTES_PLACEHOLDER

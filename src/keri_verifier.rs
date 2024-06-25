@@ -4,21 +4,12 @@ use crate::{
     base64_decode_264_bits, KeyType, NamedSignatureAlgorithm, Signature, Verifier, VerifierBytes,
 };
 
-/// This is meant to be used in end-use data structures that are self-signing.
+/// This is a concise, ASCII-only representation of a public key value, which comes from the KERI spec.
 #[derive(Clone, Debug, derive_more::Display, Eq, Hash, PartialEq)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde_with::DeserializeFromStr, serde_with::SerializeDisplay)
-)]
-pub struct KERIVerifier<'a>(pub(crate) Cow<'a, str>);
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct KERIVerifier(pub(crate) String);
 
-impl<'a> KERIVerifier<'a> {
-    pub fn into_owned(self) -> KERIVerifier<'static> {
-        KERIVerifier(Cow::Owned(self.0.into_owned()))
-    }
-    pub fn to_owned(&self) -> KERIVerifier<'static> {
-        KERIVerifier(Cow::Owned(self.0.to_string()))
-    }
+impl KERIVerifier {
     pub fn to_verifier_bytes(&self) -> VerifierBytes {
         match self.len() {
             44 => {
@@ -51,37 +42,58 @@ impl<'a> KERIVerifier<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for KERIVerifier<'a> {
+impl std::ops::Deref for KERIVerifier {
     type Target = str;
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }
 }
 
-impl std::str::FromStr for KERIVerifier<'_> {
+impl std::str::FromStr for KERIVerifier {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() < 1 {
-            return Err("KERISignature::from_str failed: too short");
-        }
-        if !s.is_ascii() {
-            return Err("KERISignature::from_str failed: not ASCII");
-        }
-        let key_type = KeyType::from_str(&s[..1])?;
-        match key_type.key_bytes_len() {
-            32 => {
-                let mut buffer = [0u8; 33];
-                selfhash::base64_decode_256_bits(&s[1..], &mut buffer)?;
-                Ok(Self(Cow::Owned(s.to_string())))
-            }
-            _ => {
-                panic!("this should not be possible");
-            }
-        }
+        validate_keri_verifier_string(s)?;
+        Ok(Self(s.to_string()))
     }
 }
 
-impl Verifier for KERIVerifier<'_> {
+impl TryFrom<&str> for KERIVerifier {
+    type Error = &'static str;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        validate_keri_verifier_string(value)?;
+        Ok(Self(value.to_string()))
+    }
+}
+
+impl TryFrom<String> for KERIVerifier {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        validate_keri_verifier_string(value.as_str())?;
+        Ok(Self(value))
+    }
+}
+
+fn validate_keri_verifier_string(s: &str) -> Result<(), &'static str> {
+    if s.len() < 1 {
+        return Err("string too short to be a KERIVerifier");
+    }
+    if !s.is_ascii() {
+        return Err("KERIVerifier strings must contain only ASCII chars");
+    }
+    let key_type = KeyType::from_str(&s[..1])?;
+    match key_type.key_bytes_len() {
+        32 => {
+            let mut buffer = [0u8; 33];
+            selfhash::base64_decode_256_bits(&s[1..], &mut buffer)?;
+        }
+        _ => {
+            panic!("this should not be possible");
+        }
+    }
+    Ok(())
+}
+
+impl Verifier for KERIVerifier {
     fn key_type(&self) -> KeyType {
         const ED25519_KERI_PREFIX: &'static str = KeyType::Ed25519.keri_prefix();
         const SECP256K1_KERI_PREFIX: &'static str = KeyType::Secp256k1.keri_prefix();
@@ -100,6 +112,7 @@ impl Verifier for KERIVerifier<'_> {
             }
         }
     }
+    /// This will allocate, because KERIVerifier is an ASCII string representation and must be converted into bytes.
     fn to_verifier_bytes(&self) -> VerifierBytes {
         self.to_verifier_bytes()
     }
