@@ -1,10 +1,14 @@
-use crate::{Signature, SignatureAlgorithm, Verifier};
+use crate::{PrivateKeyBytes, Signature, SignatureAlgorithm, Verifier};
 
 /// A trait meant to represent a signing key and the relevant actions.  For example,
 /// private keys for asymmetric cryptography, or an HMAC key.
 pub trait Signer {
     /// Returns the SignatureAlgorithm that this Signer uses.
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm;
+    /// Returns the PrivateKeyBytes representation of this Signer, which is useful for serialization
+    /// and deserialization of private keys without needing to directly use the underlying
+    /// cryptographic libraries.
+    fn to_private_key_bytes(&self) -> PrivateKeyBytes;
     /// Returns the corresponding verifier which can verify Signature-s that this Signer
     /// produces.  SignerTrait is to a private key as SignatureVerifier is to a public key.
     fn verifier(&self) -> Box<dyn Verifier>;

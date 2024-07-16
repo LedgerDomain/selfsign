@@ -26,12 +26,12 @@ impl<'a> VerifierBytes<'a> {
         }
     }
     pub fn to_keri_verifier(&self) -> Result<KERIVerifier, &'static str> {
-        if self.verifying_key_byte_v.len() != self.key_type.key_bytes_len() {
+        if self.verifying_key_byte_v.len() != self.key_type.public_key_bytes_len() {
             return Err(
                 "verifying_key_byte_v length does not match expected bytes length of KeyType",
             );
         }
-        let keri_verifier_string = match self.key_type.key_bytes_len() {
+        let keri_verifier_string = match self.key_type.public_key_bytes_len() {
             32 => {
                 let mut buffer = [0u8; 43];
                 let verifying_key = selfhash::base64_encode_256_bits(

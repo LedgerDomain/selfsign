@@ -11,6 +11,9 @@ use crate::{
 pub struct KERISignature(pub(crate) String);
 
 impl KERISignature {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
     pub fn keri_prefix(&self) -> &str {
         &self.0[..2]
     }

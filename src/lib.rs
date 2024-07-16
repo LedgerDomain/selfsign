@@ -8,6 +8,7 @@ mod keri_signature;
 mod keri_verifier;
 mod key_type;
 mod named_signature_algorithm;
+mod private_key_bytes;
 mod secp256k1_sha256;
 mod self_sign_and_hashable;
 mod self_signable;
@@ -27,6 +28,7 @@ pub use crate::{
     keri_verifier::KERIVerifier,
     key_type::KeyType,
     named_signature_algorithm::NamedSignatureAlgorithm,
+    private_key_bytes::PrivateKeyBytes,
     secp256k1_sha256::{Secp256k1_SHA256, SECP256K1_SHA_256},
     self_sign_and_hashable::SelfSignAndHashable,
     self_signable::SelfSignable,

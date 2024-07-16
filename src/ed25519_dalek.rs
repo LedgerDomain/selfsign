@@ -1,12 +1,17 @@
 use crate::{
-    Ed25519_SHA512, KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature,
-    SignatureAlgorithm, SignatureBytes, Signer, Verifier, VerifierBytes, ED25519_SHA_512,
+    Ed25519_SHA512, KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, PrivateKeyBytes,
+    Signature, SignatureAlgorithm, SignatureBytes, Signer, Verifier, VerifierBytes,
+    ED25519_SHA_512,
 };
 use std::borrow::Cow;
 
 impl Signer for ed25519_dalek::SigningKey {
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
         &Ed25519_SHA512
+    }
+    fn to_private_key_bytes(&self) -> PrivateKeyBytes {
+        PrivateKeyBytes::new(KeyType::Ed25519, Cow::Owned(self.to_bytes().to_vec()))
+            .expect("programmer error")
     }
     fn verifier(&self) -> Box<dyn Verifier> {
         Box::new(self.verifying_key())

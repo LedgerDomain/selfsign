@@ -5,7 +5,7 @@ use crate::{
 /// A signature algorithm represented by its name, which consists of its key type and the message
 /// digest hash function.  This isn't necessarily the same as some kind of "official" name.
 #[derive(
-    Clone, Debug, derive_more::Display, derive_more::Deref, Eq, derive_more::Into, PartialEq,
+    Clone, Copy, Debug, derive_more::Deref, derive_more::Display, Eq, derive_more::Into, PartialEq,
 )]
 #[cfg_attr(
     feature = "serde",

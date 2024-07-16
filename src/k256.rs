@@ -1,12 +1,16 @@
 use crate::{
-    KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, SignatureAlgorithm,
-    SignatureBytes, Signer, Verifier, VerifierBytes, SECP256K1_SHA_256,
+    KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, PrivateKeyBytes, Signature,
+    SignatureAlgorithm, SignatureBytes, Signer, Verifier, VerifierBytes, SECP256K1_SHA_256,
 };
 use std::borrow::Cow;
 
 impl Signer for k256::ecdsa::SigningKey {
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
         &SECP256K1_SHA_256
+    }
+    fn to_private_key_bytes(&self) -> PrivateKeyBytes {
+        PrivateKeyBytes::new(KeyType::Secp256k1, Cow::Owned(self.to_bytes().to_vec()))
+            .expect("programmer error")
     }
     fn verifier(&self) -> Box<dyn Verifier> {
         Box::new(self.verifying_key().clone())

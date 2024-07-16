@@ -1,8 +1,7 @@
-use std::{borrow::Cow, str::FromStr};
-
 use crate::{
     base64_decode_264_bits, KeyType, NamedSignatureAlgorithm, Signature, Verifier, VerifierBytes,
 };
+use std::borrow::Cow;
 
 /// This is a concise, ASCII-only representation of a public key value, which comes from the KERI spec.
 #[derive(Clone, Debug, derive_more::Display, Eq, Hash, PartialEq)]
@@ -10,6 +9,9 @@ use crate::{
 pub struct KERIVerifier(pub(crate) String);
 
 impl KERIVerifier {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
     pub fn to_verifier_bytes(&self) -> VerifierBytes {
         match self.len() {
             44 => {
@@ -19,7 +21,7 @@ impl KERIVerifier {
                     selfhash::base64_decode_256_bits(&self.0[1..], &mut buffer)
                         .expect("this should not fail because of check in from_str");
                 VerifierBytes {
-                    key_type: KeyType::from_str(&self.0[..1])
+                    key_type: KeyType::from_keri_prefix(&self.0[..1])
                         .expect("this should not fail because of check in from_str"),
                     verifying_key_byte_v: Cow::Owned(verifying_key_byte_v.to_vec()),
                 }
@@ -30,7 +32,7 @@ impl KERIVerifier {
                 let verifying_key_byte_v = base64_decode_264_bits(&self.0[4..], &mut buffer)
                     .expect("this should not fail because of check in from_str");
                 VerifierBytes {
-                    key_type: KeyType::from_str(&self.0[..4])
+                    key_type: KeyType::from_keri_prefix(&self.0[..4])
                         .expect("this should not fail because of check in from_str"),
                     verifying_key_byte_v: Cow::Owned(verifying_key_byte_v.to_vec()),
                 }
@@ -80,8 +82,8 @@ fn validate_keri_verifier_string(s: &str) -> Result<(), &'static str> {
     if !s.is_ascii() {
         return Err("KERIVerifier strings must contain only ASCII chars");
     }
-    let key_type = KeyType::from_str(&s[..1])?;
-    match key_type.key_bytes_len() {
+    let key_type = KeyType::from_keri_prefix(&s[..1])?;
+    match key_type.public_key_bytes_len() {
         32 => {
             let mut buffer = [0u8; 33];
             selfhash::base64_decode_256_bits(&s[1..], &mut buffer)?;
@@ -98,10 +100,10 @@ impl Verifier for KERIVerifier {
         const ED25519_KERI_PREFIX: &'static str = KeyType::Ed25519.keri_prefix();
         const SECP256K1_KERI_PREFIX: &'static str = KeyType::Secp256k1.keri_prefix();
         match &self.0[..1] {
-            ED25519_KERI_PREFIX => KeyType::from_str(&self.0[..1])
+            ED25519_KERI_PREFIX => KeyType::from_keri_prefix(&self.0[..1])
                 .expect("this should not be possible because of check in from_str"),
             "1" => match &self.0[..4] {
-                SECP256K1_KERI_PREFIX => KeyType::from_str(&self.0[..4])
+                SECP256K1_KERI_PREFIX => KeyType::from_keri_prefix(&self.0[..4])
                     .expect("this should not be possible because of check in from_str"),
                 _ => {
                     panic!("this should not be possible because of check in from_str");

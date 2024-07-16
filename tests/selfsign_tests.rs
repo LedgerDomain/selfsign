@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use selfsign::Signer;
+
 #[test]
 #[serial_test::serial]
 fn test_jws_alg() {
@@ -26,10 +28,22 @@ fn test_signer_verifier() {
     let ed25519_verifying_key = ed25519_signing_key.verifying_key();
     let secp256k1_signing_key = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
     let secp256k1_verifying_key = k256::ecdsa::VerifyingKey::from(&secp256k1_signing_key);
+    let ed25519_signer_bytes = ed25519_signing_key.to_private_key_bytes();
+    let ed25519_signer_bytes_verifier_b = ed25519_signer_bytes.verifier();
+    let secp256k1_signer_bytes = secp256k1_signing_key.to_private_key_bytes();
+    let secp256k1_signer_bytes_verifier_b = secp256k1_signer_bytes.verifier();
 
     let signer_verifier_v: Vec<(&dyn selfsign::Signer, &dyn selfsign::Verifier)> = vec![
         (&ed25519_signing_key, &ed25519_verifying_key),
         (&secp256k1_signing_key, &secp256k1_verifying_key),
+        (
+            &ed25519_signer_bytes,
+            ed25519_signer_bytes_verifier_b.as_ref(),
+        ),
+        (
+            &secp256k1_signer_bytes,
+            secp256k1_signer_bytes_verifier_b.as_ref(),
+        ),
     ];
     for (signer, verifier) in signer_verifier_v.into_iter() {
         println!("---------------------------------------------------");
