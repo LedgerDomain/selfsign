@@ -1,19 +1,28 @@
 use std::borrow::Cow;
 
-use crate::{KERISignature, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes};
+use crate::{
+    KERISignatureStr, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes,
+};
 
-// pub const SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
-//     "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-//         .to_string(),
-// );
+const SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: &'static KERISignatureStr = unsafe {
+    KERISignatureStr::new_ref_unchecked(
+        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+};
 
-// TODO: Put this back into a const once the str equivalent of KERISignature is available, then remove the lazy_static depedendency.
-lazy_static::lazy_static! {
-    pub static ref SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
-        "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string());
+#[cfg(test)]
+mod tests {
+    use crate::secp256k1_sha256::SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER;
+
+    #[test]
+    fn test_validity_of_keri_signature_placeholder_secp256k1_sha_256() {
+        use pneutype::Validate;
+        super::KERISignatureStr::validate(SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER.as_str())
+            .expect("pass");
+    }
 }
 
-pub const SECP256K1_SHA_256_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
+const SECP256K1_SHA_256_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
     named_signature_algorithm: NamedSignatureAlgorithm::SECP256K1_SHA_256,
     signature_byte_v: Cow::Borrowed(&[0u8; 64]),
 };
@@ -55,8 +64,8 @@ impl SignatureAlgorithm for Secp256k1_SHA256 {
     fn keri_signature_len(&self) -> usize {
         88
     }
-    fn placeholder_keri_signature(&self) -> &'static KERISignature {
-        &SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER
+    fn placeholder_keri_signature(&self) -> &'static KERISignatureStr {
+        SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {
         SECP256K1_SHA_256_SIGNATURE_BYTES_PLACEHOLDER

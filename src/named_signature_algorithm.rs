@@ -1,5 +1,6 @@
 use crate::{
-    KERISignature, KeyType, SignatureAlgorithm, SignatureBytes, ED25519_SHA_512, SECP256K1_SHA_256,
+    KERISignatureStr, KeyType, SignatureAlgorithm, SignatureBytes, ED25519_SHA_512,
+    SECP256K1_SHA_256,
 };
 
 /// A signature algorithm represented by its name, which consists of its key type and the message
@@ -100,7 +101,7 @@ impl SignatureAlgorithm for NamedSignatureAlgorithm {
     fn keri_signature_len(&self) -> usize {
         self.as_signature_algorithm().keri_signature_len()
     }
-    fn placeholder_keri_signature(&self) -> &'static KERISignature {
+    fn placeholder_keri_signature(&self) -> &'static KERISignatureStr {
         self.as_signature_algorithm().placeholder_keri_signature()
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {

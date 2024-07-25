@@ -41,7 +41,8 @@ impl<'a> SignatureBytes<'a> {
             self.named_signature_algorithm.keri_prefix(),
             signature
         );
-        KERISignature(keri_signature_string)
+        KERISignature::try_from(keri_signature_string)
+            .expect("programmer error: should be a valid KERISignature by construction")
     }
 }
 

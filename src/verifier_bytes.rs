@@ -69,7 +69,8 @@ impl<'a> VerifierBytes<'a> {
                 panic!("this should not be possible");
             }
         };
-        Ok(KERIVerifier(keri_verifier_string))
+        Ok(KERIVerifier::try_from(keri_verifier_string)
+            .expect("programmer error: should be a valid KERIVerifier by construction"))
     }
 }
 

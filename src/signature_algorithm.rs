@@ -1,4 +1,4 @@
-use crate::{KERISignature, KeyType, NamedSignatureAlgorithm, SignatureBytes};
+use crate::{KERISignatureStr, KeyType, NamedSignatureAlgorithm, SignatureBytes};
 
 pub trait SignatureAlgorithm {
     fn as_any(&self) -> &dyn std::any::Any;
@@ -18,7 +18,7 @@ pub trait SignatureAlgorithm {
     fn keri_signature_len(&self) -> usize;
     /// Returns the KERISignature form of the signature to be used as the placeholder when generating
     /// the digest of the self-signing object.
-    fn placeholder_keri_signature(&self) -> &'static KERISignature;
+    fn placeholder_keri_signature(&self) -> &'static KERISignatureStr;
     /// Returns the SignatureBytes form of the signature to be used as the placeholder when generating
     /// the digest of the self-signing object.
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static>;

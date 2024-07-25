@@ -660,7 +660,7 @@ fn test_multiple_self_signature_slots() {
                 signature: capability_invocation_signing_key_0
                     .signature_algorithm()
                     .placeholder_keri_signature()
-                    .clone(),
+                    .to_owned(),
                 // TODO: Include version_id and self_sig as query params
                 query_o: None,
                 fragment_o: None,

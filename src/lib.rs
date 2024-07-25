@@ -5,7 +5,9 @@ mod ed25519_sha512;
 #[cfg(feature = "k256")]
 mod k256;
 mod keri_signature;
+mod keri_signature_str;
 mod keri_verifier;
+mod keri_verifier_str;
 mod key_type;
 mod named_signature_algorithm;
 mod private_key_bytes;
@@ -25,7 +27,9 @@ pub use crate::{
     base64::{base64_decode_264_bits, base64_encode_264_bits},
     ed25519_sha512::{Ed25519_SHA512, ED25519_SHA_512},
     keri_signature::KERISignature,
+    keri_signature_str::KERISignatureStr,
     keri_verifier::KERIVerifier,
+    keri_verifier_str::KERIVerifierStr,
     key_type::KeyType,
     named_signature_algorithm::NamedSignatureAlgorithm,
     private_key_bytes::PrivateKeyBytes,

@@ -1,20 +1,28 @@
 use std::borrow::Cow;
 
-use crate::{KERISignature, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes};
+use crate::{
+    KERISignatureStr, KeyType, NamedSignatureAlgorithm, SignatureAlgorithm, SignatureBytes,
+};
 
-// This needs the str equivalent of KERISignature before it can work.
-// pub const ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
-//     "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-//         .to_string(),
-// );
+const ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: &'static KERISignatureStr = unsafe {
+    KERISignatureStr::new_ref_unchecked(
+        "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+};
 
-// TODO: Put this back into a const once the str equivalent of KERISignature is available, then remove the lazy_static depedendency.
-lazy_static::lazy_static! {
-    pub static ref ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER: KERISignature = KERISignature(
-        "0BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string());
+#[cfg(test)]
+mod tests {
+    use crate::ed25519_sha512::ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER;
+
+    #[test]
+    fn test_validity_of_keri_signature_placeholder_ed25519_sha_512() {
+        use pneutype::Validate;
+        super::KERISignatureStr::validate(ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER.as_str())
+            .expect("pass");
+    }
 }
 
-pub const ED25519_SHA_512_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
+const ED25519_SHA_512_SIGNATURE_BYTES_PLACEHOLDER: SignatureBytes<'static> = SignatureBytes {
     named_signature_algorithm: NamedSignatureAlgorithm::ED25519_SHA_512,
     signature_byte_v: Cow::Borrowed(&[0u8; 64]),
 };
@@ -56,8 +64,8 @@ impl SignatureAlgorithm for Ed25519_SHA512 {
     fn keri_signature_len(&self) -> usize {
         88
     }
-    fn placeholder_keri_signature(&self) -> &'static KERISignature {
-        &ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER
+    fn placeholder_keri_signature(&self) -> &'static KERISignatureStr {
+        ED25519_SHA_512_KERI_SIGNATURE_PLACEHOLDER
     }
     fn placeholder_signature_bytes(&self) -> SignatureBytes<'static> {
         ED25519_SHA_512_SIGNATURE_BYTES_PLACEHOLDER
