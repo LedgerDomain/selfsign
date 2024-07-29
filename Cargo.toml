@@ -34,7 +34,7 @@ k256 = { version = "0.13.1", optional = true, default-features = false, features
     "alloc",
     "ecdsa",
 ] }
-pneutype = "0.2.0"
+pneutype = "0.3.0"
 selfhash = "0.2.2"
 serde = { version = "1.0", optional = true, default-features = false, features = [
     "alloc",
@@ -66,7 +66,6 @@ serde_json_canonicalizer = "0.2.0"
 serial_test = "2.0.0"
 
 [patch.crates-io]
-# pneutype = { git = "https://github.com/vdods/pneutype", rev = "pneutype-v0.2.0" }
+pneutype = { git = "https://github.com/vdods/pneutype", rev = "pneutype-v0.3.0" }
 # selfhash = { git = "https://github.com/LedgerDomain/selfhash", rev = "selfhash-v0.2.2" }
-pneutype = { path = "../../vdods/pneutype/pneutype" }
-selfhash = { path = "../selfhash" }
+selfhash = { git = "https://github.com/LedgerDomain/selfhash", branch = "keri-hash-as-pneutype" }

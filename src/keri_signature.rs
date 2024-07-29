@@ -2,7 +2,7 @@ use crate::{KERISignatureStr, Signature};
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, pneutype::PneuString)]
-#[pneu_string(borrow = "KERISignatureStr", as_pneu_str = "as_keri_signature_str")]
+#[pneu_string(as_pneu_str = "as_keri_signature_str", borrow = "KERISignatureStr")]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", pneu_string(deserialize))]
 pub struct KERISignature(String);

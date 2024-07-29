@@ -5,7 +5,7 @@ use crate::{
 };
 
 const SECP256K1_SHA_256_KERI_SIGNATURE_PLACEHOLDER: &'static KERISignatureStr = unsafe {
-    KERISignatureStr::new_ref_unchecked(
+    KERISignatureStr::new_ref_unchecked_const(
         "0CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     )
 };

@@ -886,7 +886,7 @@ impl selfhash::SelfHashable for TestData {
     }
     fn set_self_hash_slots_to(&mut self, hash: &dyn selfhash::Hash) {
         let keri_hash = hash.to_keri_hash();
-        self.self_hash_o = Some(keri_hash);
+        self.self_hash_o = Some(keri_hash.into_owned());
     }
 }
 
