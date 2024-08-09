@@ -1,6 +1,5 @@
 use crate::{
-    base64_decode_264_bits, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, Verifier,
-    VerifierBytes,
+    base64_decode_264_bits, KeyType, NamedSignatureAlgorithm, Signature, Verifier, VerifierBytes,
 };
 use std::borrow::Cow;
 
@@ -72,7 +71,7 @@ impl pneutype::Validate for KERIVerifierStr {
     }
 }
 
-impl Verifier for KERIVerifierStr {
+impl<'a> Verifier for &'a KERIVerifierStr {
     fn key_type(&self) -> KeyType {
         const ED25519_KERI_PREFIX: &'static str = KeyType::Ed25519.keri_prefix();
         const SECP256K1_KERI_PREFIX: &'static str = KeyType::Secp256k1.keri_prefix();
@@ -92,11 +91,11 @@ impl Verifier for KERIVerifierStr {
         }
     }
     /// This will allocate, because KERIVerifier is an ASCII string representation and must be converted into bytes.
-    fn to_verifier_bytes(&self) -> VerifierBytes {
-        self.to_verifier_bytes()
+    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
+        (*self).to_verifier_bytes()
     }
-    fn to_keri_verifier(&self) -> KERIVerifier {
-        self.to_owned()
+    fn to_keri_verifier<'s: 'h, 'h>(&'s self) -> Cow<'h, KERIVerifierStr> {
+        Cow::Borrowed(*self)
     }
     fn verify_digest(
         &self,

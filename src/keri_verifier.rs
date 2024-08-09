@@ -1,4 +1,5 @@
 use crate::{KERIVerifierStr, KeyType, Signature, Verifier, VerifierBytes};
+use std::borrow::Cow;
 
 /// This is a concise, ASCII-only representation of a public key value, which comes from the KERI spec.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, pneutype::PneuString)]
@@ -7,18 +8,17 @@ use crate::{KERIVerifierStr, KeyType, Signature, Verifier, VerifierBytes};
 #[cfg_attr(feature = "serde", pneu_string(deserialize))]
 pub struct KERIVerifier(String);
 
-// TODO: Is there any way to derive this from KERIVerifier via Deref?
 impl Verifier for KERIVerifier {
     fn key_type(&self) -> KeyType {
         use std::ops::Deref;
         self.deref().key_type()
     }
-    fn to_verifier_bytes(&self) -> VerifierBytes {
+    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
         use std::ops::Deref;
         self.deref().to_verifier_bytes()
     }
-    fn to_keri_verifier(&self) -> KERIVerifier {
-        self.clone()
+    fn to_keri_verifier<'s: 'h, 'h>(&'s self) -> Cow<'h, KERIVerifierStr> {
+        Cow::Borrowed(self)
     }
     fn verify_digest(
         &self,

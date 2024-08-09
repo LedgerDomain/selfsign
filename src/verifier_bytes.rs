@@ -91,13 +91,12 @@ impl Verifier for VerifierBytes<'_> {
     fn key_type(&self) -> KeyType {
         self.key_type
     }
-    /// This won't allocate.
-    fn to_verifier_bytes(&self) -> VerifierBytes {
-        self.clone()
-    }
-    /// This will allocate, because VerifierBytes is a byte array representation and must be converted into KERIVerifier.
-    fn to_keri_verifier(&self) -> KERIVerifier {
-        self.to_keri_verifier().expect("programmer error")
+    /// This will not allocate.
+    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
+        VerifierBytes::<'h> {
+            key_type: self.key_type,
+            verifying_key_byte_v: Cow::Borrowed(&self.verifying_key_byte_v),
+        }
     }
     fn verify_digest(
         &self,

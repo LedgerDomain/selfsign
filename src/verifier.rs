@@ -1,18 +1,23 @@
-use crate::{KERIVerifier, KeyType, Signature, VerifierBytes};
+use crate::{KERIVerifierStr, KeyType, Signature, VerifierBytes};
+use std::borrow::Cow;
 
-// Debug is probably a TEMP HACK
 pub trait Verifier: std::fmt::Debug {
     /// Returns the KeyType for this Verifier (typically a public key, but could be e.g. an HMAC key).
     fn key_type(&self) -> KeyType;
-    /// This is one of two versions of the concrete value that goes into the end-use data
-    /// structure, representing the KeyType and the verifying key.
-    fn to_verifier_bytes(&self) -> VerifierBytes;
-    /// This is one of two versions of the concrete value that goes into the end-use data
-    /// structure, representing the KeyType and the verifying key.
-    fn to_keri_verifier(&self) -> KERIVerifier;
-    // /// Returns the signature to be used as the placeholder when generating the digest of the
-    // /// self-signing object.
-    // fn placeholder_signature(&self) -> &'static dyn Signature;
+    /// Returns the VerifierBytes representation of this verifier.  If the native representation of this verifier is
+    /// bytes, then the VerifierBytes can (and should) use Cow::Borrowed (see VerifierBytes), in which case no
+    /// allocation is done.
+    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h>;
+    /// Returns the KERIVerifier representation of this verifier.  Default impl is
+    /// std::borrow::Cow::Owned(self.to_verifier_bytes().to_keri_verifier()), but if the native representation
+    /// of this verifier is KERIVerifier, then it should return std::borrow::Cow::Borrowed(_).
+    fn to_keri_verifier<'s: 'h, 'h>(&'s self) -> Cow<'h, KERIVerifierStr> {
+        Cow::Owned(
+            self.to_verifier_bytes()
+                .to_keri_verifier()
+                .expect("programmer error"),
+        )
+    }
     /// This verifies a message, i.e. hashes the message and then verifies the signature using verify_digest.
     fn verify_message(
         &self,

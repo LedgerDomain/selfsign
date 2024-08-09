@@ -1,4 +1,5 @@
-use crate::{KERISignatureStr, Signature};
+use crate::{KERISignatureStr, Signature, SignatureBytes};
+use std::borrow::Cow;
 
 // This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, pneutype::PneuString)]
@@ -13,11 +14,11 @@ impl Signature for KERISignature {
         use std::ops::Deref;
         self.deref().signature_algorithm()
     }
-    fn to_signature_bytes(&self) -> crate::SignatureBytes {
+    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
         use std::ops::Deref;
         self.deref().to_signature_bytes()
     }
-    fn to_keri_signature(&self) -> KERISignature {
-        self.clone()
+    fn to_keri_signature<'s: 'h, 'h>(&'s self) -> Cow<'h, KERISignatureStr> {
+        Cow::Borrowed(self.as_keri_signature_str())
     }
 }

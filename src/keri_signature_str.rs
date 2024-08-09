@@ -1,9 +1,8 @@
-use std::borrow::Cow;
-
 use crate::{
-    KERISignature, NamedSignatureAlgorithm, Signature, SignatureAlgorithm, SignatureBytes,
-    ED25519_SHA_512, SECP256K1_SHA_256,
+    NamedSignatureAlgorithm, Signature, SignatureAlgorithm, SignatureBytes, ED25519_SHA_512,
+    SECP256K1_SHA_256,
 };
+use std::borrow::Cow;
 
 /// This is the str-based analog to KERISignature.
 #[derive(Debug, Eq, Hash, PartialEq, pneutype::PneuStr)]
@@ -69,9 +68,10 @@ impl pneutype::Validate for KERISignatureStr {
     }
 }
 
-impl Signature for KERISignatureStr {
+impl<'a> Signature for &'a KERISignatureStr {
     /// This assumes the prefix is 2 chars.
     fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
+        // TODO: De-duplicate this with the others
         match self.keri_prefix() {
             "0B" => &ED25519_SHA_512,
             "0C" => &SECP256K1_SHA_256,
@@ -79,28 +79,10 @@ impl Signature for KERISignatureStr {
         }
     }
     /// This will allocate, because it must convert an ASCII string representation into bytes.
-    fn to_signature_bytes(&self) -> SignatureBytes {
-        self.to_signature_bytes()
-    }
-    fn to_keri_signature(&self) -> KERISignature {
-        self.to_owned()
-    }
-}
-
-impl Signature for &'static KERISignatureStr {
-    /// This assumes the prefix is 2 chars.
-    fn signature_algorithm(&self) -> &'static dyn SignatureAlgorithm {
-        match self.keri_prefix() {
-            "0B" => &ED25519_SHA_512,
-            "0C" => &SECP256K1_SHA_256,
-            _ => panic!("this should not be possible"),
-        }
-    }
-    /// This will allocate, because it must convert an ASCII string representation into bytes.
-    fn to_signature_bytes(&self) -> SignatureBytes {
+    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
         (*self).to_signature_bytes()
     }
-    fn to_keri_signature(&self) -> KERISignature {
-        (*self).to_owned()
+    fn to_keri_signature<'s: 'h, 'h>(&'s self) -> Cow<'h, KERISignatureStr> {
+        Cow::Borrowed(self)
     }
 }

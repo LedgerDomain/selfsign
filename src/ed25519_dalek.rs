@@ -1,7 +1,6 @@
 use crate::{
-    Ed25519_SHA512, KERISignature, KERIVerifier, KeyType, NamedSignatureAlgorithm, PrivateKeyBytes,
-    Signature, SignatureAlgorithm, SignatureBytes, Signer, Verifier, VerifierBytes,
-    ED25519_SHA_512,
+    Ed25519_SHA512, KeyType, NamedSignatureAlgorithm, PrivateKeyBytes, Signature,
+    SignatureAlgorithm, SignatureBytes, Signer, Verifier, VerifierBytes, ED25519_SHA_512,
 };
 use std::borrow::Cow;
 
@@ -48,15 +47,11 @@ impl Signature for ed25519_dalek::Signature {
         &ED25519_SHA_512
     }
     /// This will allocate, because of the way the ed25519_dalek crate returns the signature bytes.
-    fn to_signature_bytes(&self) -> SignatureBytes {
+    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
         SignatureBytes {
             named_signature_algorithm: self.signature_algorithm().named_signature_algorithm(),
             signature_byte_v: Cow::Owned(self.to_bytes().to_vec()),
         }
-    }
-    /// This will allocate because it must convert from bytes to an ASCII string representation.
-    fn to_keri_signature(&self) -> KERISignature {
-        self.to_signature_bytes().to_keri_signature()
     }
 }
 
@@ -109,17 +104,11 @@ impl Verifier for ed25519_dalek::VerifyingKey {
         KeyType::Ed25519
     }
     /// This will allocate, because of how ed25519_dalek crate returns the verifying key bytes.
-    fn to_verifier_bytes(&self) -> VerifierBytes {
+    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
         VerifierBytes {
             key_type: self.key_type(),
             verifying_key_byte_v: Cow::Owned(self.to_bytes().to_vec()),
         }
-    }
-    /// This will allocate, because the verifier comes from a byte array and must be converted into a KERIVerifier.
-    fn to_keri_verifier(&self) -> KERIVerifier {
-        self.to_verifier_bytes()
-            .to_keri_verifier()
-            .expect("programmer error")
     }
     fn verify_digest(
         &self,

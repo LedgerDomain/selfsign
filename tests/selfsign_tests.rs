@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use selfsign::Signer;
 
@@ -56,8 +56,8 @@ fn test_signer_verifier() {
             println!("keri_verifier: {}", keri_verifier);
             let verifier_bytes = keri_verifier.to_verifier_bytes();
             assert_eq!(
-                keri_verifier,
-                verifier_bytes.to_keri_verifier().expect("pass")
+                keri_verifier.deref(),
+                verifier_bytes.to_keri_verifier().expect("pass").deref()
             );
         }
         {
@@ -68,11 +68,12 @@ fn test_signer_verifier() {
         }
         {
             assert_eq!(
-                verifier.to_keri_verifier(),
+                verifier.to_keri_verifier().deref(),
                 verifier
                     .to_verifier_bytes()
                     .to_keri_verifier()
                     .expect("pass")
+                    .deref()
             );
             assert_eq!(
                 verifier.to_verifier_bytes(),
@@ -88,7 +89,10 @@ fn test_signer_verifier() {
             let keri_signature = signature_b.to_keri_signature();
             println!("keri_signature: {}", keri_signature);
             let signature_bytes = keri_signature.to_signature_bytes();
-            assert_eq!(keri_signature, signature_bytes.to_keri_signature());
+            assert_eq!(
+                keri_signature.as_ref(),
+                signature_bytes.to_keri_signature().as_ref()
+            );
         }
         {
             let signature_bytes = signature_b.to_signature_bytes();
@@ -98,12 +102,18 @@ fn test_signer_verifier() {
         }
         {
             assert_eq!(
-                signature_b.to_keri_signature(),
-                signature_b.to_signature_bytes().to_keri_signature()
+                signature_b.to_keri_signature().as_ref(),
+                signature_b
+                    .to_signature_bytes()
+                    .to_keri_signature()
+                    .as_ref()
             );
             assert_eq!(
-                signature_b.to_signature_bytes(),
-                signature_b.to_keri_signature().to_signature_bytes()
+                signature_b.to_signature_bytes().as_ref(),
+                signature_b
+                    .to_keri_signature()
+                    .to_signature_bytes()
+                    .as_ref()
             );
         }
         let keri_signature = signature_b.to_keri_signature();
@@ -115,6 +125,7 @@ fn test_signer_verifier() {
             .verify_message(message, signature_b.as_ref())
             .expect("pass");
         keri_verifier
+            .as_ref()
             .verify_message(message, signature_b.as_ref())
             .expect("pass");
         verifier_bytes
@@ -122,19 +133,21 @@ fn test_signer_verifier() {
             .expect("pass");
 
         verifier
-            .verify_message(message, &keri_signature)
+            .verify_message(message, &keri_signature.as_ref())
             .expect("pass");
         keri_verifier
-            .verify_message(message, &keri_signature)
+            .as_ref()
+            .verify_message(message, &keri_signature.as_ref())
             .expect("pass");
         verifier_bytes
-            .verify_message(message, &keri_signature)
+            .verify_message(message, &keri_signature.as_ref())
             .expect("pass");
 
         verifier
             .verify_message(message, &signature_bytes)
             .expect("pass");
         keri_verifier
+            .as_ref()
             .verify_message(message, &signature_bytes)
             .expect("pass");
         verifier_bytes
@@ -181,8 +194,7 @@ impl selfsign::SelfSignable for FancyData {
         ))
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        self.self_signature_o = Some(signature.to_keri_signature());
-        // self.self_signature_o = Some(signature.to_signature_bytes().into_owned());
+        self.self_signature_o = Some(signature.to_keri_signature().into_owned());
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
@@ -194,8 +206,7 @@ impl selfsign::SelfSignable for FancyData {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
-        // self.verifier_o = Some(verifier.to_verifier_bytes().into_owned());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
     }
 }
 
@@ -418,14 +429,20 @@ pub trait KeyMaterial: selfsign::SelfSignable {
             }
             // Check that the self-signature verifier is listed in the capability_invocation_v
             // of the previous KeyMaterial.
-            if !previous_key_material.capability_invocation_v().contains(
-                &self
-                    .get_self_signature_verifier()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .to_keri_verifier(),
-            ) {
+            if !previous_key_material
+                .capability_invocation_v()
+                .iter()
+                .any(|keri_verifier| {
+                    keri_verifier.deref()
+                        == self
+                            .get_self_signature_verifier()
+                            .unwrap()
+                            .as_ref()
+                            .unwrap()
+                            .to_keri_verifier()
+                            .deref()
+                })
+            {
                 return Err("Unauthorized KeyMaterial update: self_signature_verifier_o is not in capability_invocation_v of previous KeyMaterial");
             }
         } else {
@@ -434,14 +451,16 @@ pub trait KeyMaterial: selfsign::SelfSignable {
                 return Err("version_id must be 0 for root KeyMaterial");
             }
             // Check that the self-signature verifier is listed in capability_invocation_v.
-            if !self.capability_invocation_v().contains(
-                &self
-                    .get_self_signature_verifier()
-                    .unwrap()
-                    .as_ref()
-                    .unwrap()
-                    .to_keri_verifier(),
-            ) {
+            if !self.capability_invocation_v().iter().any(|keri_verifier| {
+                keri_verifier.deref()
+                    == self
+                        .get_self_signature_verifier()
+                        .unwrap()
+                        .as_ref()
+                        .unwrap()
+                        .to_keri_verifier()
+                        .deref()
+            }) {
                 return Err("self_signature_verifier_o is not in capability_invocation_v");
             }
         }
@@ -534,10 +553,9 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
         )
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
-        let keri_signature = signature.to_keri_signature();
+        let keri_signature = signature.to_keri_signature().into_owned();
         self.uri.signature = keri_signature.clone();
         self.self_signature_o = Some(keri_signature);
-        // self.self_signature_o = Some(signature.to_signature_bytes().into_owned());
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
@@ -549,7 +567,7 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
     }
 }
 
@@ -620,7 +638,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
         let keri_signature = signature.to_keri_signature();
-        self.self_signature_o = Some(keri_signature);
+        self.self_signature_o = Some(keri_signature.into_owned());
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
@@ -632,7 +650,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
     }
 }
 
@@ -667,15 +685,26 @@ fn test_multiple_self_signature_slots() {
             },
             version_id: 0,
             valid_from: time::OffsetDateTime::now_utc(),
-            authentication_v: vec![authentication_signing_key_0.verifier().to_keri_verifier()],
-            assertion_v: vec![assertion_signing_key_0.verifier().to_keri_verifier()],
-            key_exchange_v: vec![key_exchange_signing_key_0.verifier().to_keri_verifier()],
+            authentication_v: vec![authentication_signing_key_0
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
+            assertion_v: vec![assertion_signing_key_0
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
+            key_exchange_v: vec![key_exchange_signing_key_0
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
             capability_invocation_v: vec![capability_invocation_signing_key_0
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             capability_delegation_v: vec![capability_delegation_signing_key_0
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -719,15 +748,26 @@ fn test_multiple_self_signature_slots() {
                 .clone(),
             version_id: key_material_0.version_id + 1,
             valid_from: time::OffsetDateTime::now_utc(),
-            authentication_v: vec![authentication_signing_key_1.verifier().to_keri_verifier()],
-            assertion_v: vec![assertion_signing_key_1.verifier().to_keri_verifier()],
-            key_exchange_v: vec![key_exchange_signing_key_1.verifier().to_keri_verifier()],
+            authentication_v: vec![authentication_signing_key_1
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
+            assertion_v: vec![assertion_signing_key_1
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
+            key_exchange_v: vec![key_exchange_signing_key_1
+                .verifier()
+                .to_keri_verifier()
+                .into_owned()],
             capability_invocation_v: vec![capability_invocation_signing_key_1
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             capability_delegation_v: vec![capability_delegation_signing_key_1
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -771,23 +811,43 @@ fn test_multiple_self_signature_slots() {
             version_id: key_material_1.version_id + 1,
             valid_from: time::OffsetDateTime::now_utc(),
             authentication_v: vec![
-                authentication_signing_key_1.verifier().to_keri_verifier(),
-                authentication_signing_key_2.verifier().to_keri_verifier(),
+                authentication_signing_key_1
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
+                authentication_signing_key_2
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
             ],
             assertion_v: vec![
-                assertion_signing_key_1.verifier().to_keri_verifier(),
-                assertion_signing_key_2.verifier().to_keri_verifier(),
+                assertion_signing_key_1
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
+                assertion_signing_key_2
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
             ],
             key_exchange_v: vec![
-                key_exchange_signing_key_1.verifier().to_keri_verifier(),
-                key_exchange_signing_key_2.verifier().to_keri_verifier(),
+                key_exchange_signing_key_1
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
+                key_exchange_signing_key_2
+                    .verifier()
+                    .to_keri_verifier()
+                    .into_owned(),
             ],
             capability_invocation_v: vec![capability_invocation_signing_key_1
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             capability_delegation_v: vec![capability_delegation_signing_key_1
                 .verifier()
-                .to_keri_verifier()],
+                .to_keri_verifier()
+                .into_owned()],
             self_signature_verifier_o: None,
             self_signature_o: None,
         };
@@ -855,7 +915,7 @@ impl selfsign::SelfSignable for TestData {
     }
     fn set_self_signature_slots_to(&mut self, signature: &dyn selfsign::Signature) {
         let keri_signature = signature.to_keri_signature();
-        self.self_signature_o = Some(keri_signature);
+        self.self_signature_o = Some(keri_signature.into_owned());
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
@@ -867,7 +927,7 @@ impl selfsign::SelfSignable for TestData {
         ))
     }
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn selfsign::Verifier) {
-        self.self_signature_verifier_o = Some(verifier.to_keri_verifier());
+        self.self_signature_verifier_o = Some(verifier.to_keri_verifier().into_owned());
     }
 }
 

@@ -70,11 +70,10 @@ impl Signature for SignatureBytes<'_> {
         }
     }
     /// This won't allocate.
-    fn to_signature_bytes(&self) -> SignatureBytes {
-        self.clone()
-    }
-    /// This will allocate, because of the need to convert bytes to an ASCII string representation.
-    fn to_keri_signature(&self) -> KERISignature {
-        self.to_keri_signature()
+    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
+        SignatureBytes {
+            named_signature_algorithm: self.named_signature_algorithm.clone(),
+            signature_byte_v: Cow::Borrowed(&self.signature_byte_v),
+        }
     }
 }
