@@ -994,3 +994,23 @@ fn test_self_sign_and_hash() {
         }
     }
 }
+
+#[cfg(feature = "self-signable-json")]
+#[test]
+fn test_self_signable_json() {
+    use selfsign::SelfSignable;
+
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+
+    let mut value = serde_json::json!({"thingy": 3});
+    println!(
+        "value before self-sign: {}",
+        serde_json::to_string_pretty(&value).expect("pass")
+    );
+    value.self_sign(&signing_key).expect("pass");
+    println!(
+        "value after self-sign: {}",
+        serde_json::to_string_pretty(&value).expect("pass")
+    );
+    value.verify_self_signatures().expect("pass");
+}

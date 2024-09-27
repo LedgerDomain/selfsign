@@ -17,6 +17,8 @@ mod private_key_bytes;
 mod secp256k1_sha256;
 mod self_sign_and_hashable;
 mod self_signable;
+#[cfg(feature = "self-signable-json")]
+mod self_signable_json;
 mod signature;
 mod signature_algorithm;
 mod signature_bytes;
