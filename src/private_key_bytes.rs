@@ -1,4 +1,7 @@
-use crate::{KeyType, NamedSignatureAlgorithm, Signature, SignatureAlgorithm, Signer, Verifier};
+use crate::{
+    require, KeyType, NamedSignatureAlgorithm, Result, Signature, SignatureAlgorithm, Signer,
+    Verifier,
+};
 use std::borrow::Cow;
 
 /// This is a generic data structure to represent private keys that doesn't require direct use of the underlying
@@ -11,12 +14,14 @@ pub struct PrivateKeyBytes<'a> {
 }
 
 impl<'a> PrivateKeyBytes<'a> {
-    pub fn new(key_type: KeyType, private_key_byte_v: Cow<'a, [u8]>) -> Result<Self, &'static str> {
-        if private_key_byte_v.len() != key_type.private_key_bytes_len() {
-            return Err(
-                "private_key_byte_v length does not match expected private key bytes length of KeyType",
-            );
-        }
+    pub fn new(key_type: KeyType, private_key_byte_v: Cow<'a, [u8]>) -> Result<Self> {
+        require!(
+            private_key_byte_v.len() == key_type.private_key_bytes_len(),
+            "private_key_byte_v length ({}) does not match expected private key bytes length ({}) of KeyType {:?}",
+            private_key_byte_v.len(),
+            key_type.private_key_bytes_len(),
+            key_type
+        );
         Ok(Self {
             key_type,
             private_key_byte_v,
@@ -112,10 +117,7 @@ impl Signer for PrivateKeyBytes<'_> {
     fn to_key_byte_v(&self) -> Vec<u8> {
         self.private_key_byte_v.to_vec()
     }
-    fn sign_digest(
-        &self,
-        _hasher_b: Box<dyn selfhash::Hasher>,
-    ) -> Result<Box<dyn Signature>, &'static str> {
+    fn sign_digest(&self, _hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>> {
         match self.key_type.default_named_signature_algorithm() {
             NamedSignatureAlgorithm::ED25519_SHA_512 => {
                 #[cfg(feature = "ed25519-dalek")]

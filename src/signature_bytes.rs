@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::{
-    KERISignature, NamedSignatureAlgorithm, Signature, SignatureAlgorithm, ED25519_SHA_512,
-    SECP256K1_SHA_256,
+    KERISignature, NamedSignatureAlgorithm, PreferredSignatureFormat, Signature,
+    SignatureAlgorithm, ED25519_SHA_512, SECP256K1_SHA_256,
 };
 
 // This is meant to be used in end-use data structures that are self-signing.
@@ -69,11 +69,10 @@ impl Signature for SignatureBytes<'_> {
             }
         }
     }
-    /// This won't allocate.
-    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
-        SignatureBytes {
+    fn as_preferred_signature_format<'s: 'h, 'h>(&'s self) -> PreferredSignatureFormat<'h> {
+        PreferredSignatureFormat::SignatureBytes(SignatureBytes {
             named_signature_algorithm: self.named_signature_algorithm.clone(),
             signature_byte_v: Cow::Borrowed(&self.signature_byte_v),
-        }
+        })
     }
 }

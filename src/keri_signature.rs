@@ -1,4 +1,4 @@
-use crate::{KERISignatureStr, Signature, SignatureBytes};
+use crate::{KERISignatureStr, PreferredSignatureFormat, Signature};
 use std::borrow::Cow;
 
 // This is meant to be used in end-use data structures that are self-signing.
@@ -14,11 +14,7 @@ impl Signature for KERISignature {
         use std::ops::Deref;
         self.deref().signature_algorithm()
     }
-    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
-        use std::ops::Deref;
-        self.deref().to_signature_bytes()
-    }
-    fn to_keri_signature<'s: 'h, 'h>(&'s self) -> Cow<'h, KERISignatureStr> {
-        Cow::Borrowed(self.as_keri_signature_str())
+    fn as_preferred_signature_format<'s: 'h, 'h>(&'s self) -> PreferredSignatureFormat<'h> {
+        PreferredSignatureFormat::KERISignature(Cow::Borrowed(self.as_keri_signature_str()))
     }
 }

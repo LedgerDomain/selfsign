@@ -1,6 +1,5 @@
+use selfsign::{require, Error, Result, Signer};
 use std::{collections::HashMap, ops::Deref};
-
-use selfsign::Signer;
 
 #[test]
 #[serial_test::serial]
@@ -309,12 +308,13 @@ impl std::fmt::Display for URIWithSignature {
 }
 
 impl std::str::FromStr for URIWithSignature {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         // TODO: Need to check for proper percent-encoding, etc.
-        if !s.is_ascii() {
-            return Err("URIWithSignature must be ASCII");
-        }
+        require!(
+            s.is_ascii(),
+            "URIWithSignature must contain only ASCII chars"
+        );
         // Parse the scheme.
         let (scheme, after_scheme) = s
             .split_once(":")
@@ -403,7 +403,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     fn verify_nonrecursive(
         &self,
         key_material_m: &HashMap<selfsign::KERISignature, &dyn KeyMaterial>,
-    ) -> Result<(), &'static str> {
+    ) -> Result<()> {
         // First, verify that this KeyMaterial is properly self-signed.
         self.verify_self_signatures()?;
         // Now do checks that depend on if this is the root KeyMaterial or not.
@@ -414,22 +414,23 @@ pub trait KeyMaterial: selfsign::SelfSignable {
                 .get(previous_key_material_self_signature)
                 .ok_or("previous_key_material_self_signature not found in key_material_m")?;
             // Check that the URI matches.
-            if self.uri() != previous_key_material.uri() {
-                return Err("URI does not match URI of previous KeyMaterial");
-            }
+            require!(
+                self.uri() == previous_key_material.uri(),
+                "URI does not match URI of previous KeyMaterial"
+            );
             // Check that the version_id is exactly one greater than that of the previous KeyMaterial.
-            if self.version_id() != previous_key_material.version_id() + 1 {
-                return Err(
-                    "version_id must be exactly one greater than that of previous KeyMaterial",
-                );
-            }
+            require!(
+                self.version_id() == previous_key_material.version_id() + 1,
+                "version_id must be exactly one greater than that of previous KeyMaterial"
+            );
             // Check that the valid_from timestamps are monotonically increasing.
-            if self.valid_from() <= previous_key_material.valid_from() {
-                return Err("valid_from timestamp must be later than that of previous KeyMaterial");
-            }
+            require!(
+                self.valid_from() > previous_key_material.valid_from(),
+                "valid_from timestamp must be later than that of previous KeyMaterial"
+            );
             // Check that the self-signature verifier is listed in the capability_invocation_v
             // of the previous KeyMaterial.
-            if !previous_key_material
+            require!(previous_key_material
                 .capability_invocation_v()
                 .iter()
                 .any(|keri_verifier| {
@@ -441,28 +442,29 @@ pub trait KeyMaterial: selfsign::SelfSignable {
                             .unwrap()
                             .to_keri_verifier()
                             .deref()
-                })
-            {
-                return Err("Unauthorized KeyMaterial update: self_signature_verifier_o is not in capability_invocation_v of previous KeyMaterial");
-            }
+                }),
+                "Unauthorized KeyMaterial update: self_signature_verifier_o is not in capability_invocation_v of previous KeyMaterial"
+            );
         } else {
             // Check that the version_id is 0.
-            if self.version_id() != 0 {
-                return Err("version_id must be 0 for root KeyMaterial");
-            }
+            require!(
+                self.version_id() == 0,
+                "version_id must be 0 for root KeyMaterial"
+            );
             // Check that the self-signature verifier is listed in capability_invocation_v.
-            if !self.capability_invocation_v().iter().any(|keri_verifier| {
-                keri_verifier.deref()
-                    == self
-                        .get_self_signature_verifier()
-                        .unwrap()
-                        .as_ref()
-                        .unwrap()
-                        .to_keri_verifier()
-                        .deref()
-            }) {
-                return Err("self_signature_verifier_o is not in capability_invocation_v");
-            }
+            require!(
+                self.capability_invocation_v().iter().any(|keri_verifier| {
+                    keri_verifier.deref()
+                        == self
+                            .get_self_signature_verifier()
+                            .unwrap()
+                            .as_ref()
+                            .unwrap()
+                            .to_keri_verifier()
+                            .deref()
+                }),
+                "self_signature_verifier_o is not in capability_invocation_v"
+            );
         }
 
         Ok(())
@@ -470,7 +472,7 @@ pub trait KeyMaterial: selfsign::SelfSignable {
     fn verify_recursive(
         &self,
         key_material_m: &HashMap<selfsign::KERISignature, &dyn KeyMaterial>,
-    ) -> Result<(), &'static str> {
+    ) -> Result<()> {
         self.verify_nonrecursive(key_material_m)?;
         if let Some(previous_key_material_self_signature) =
             self.previous_key_material_self_signature_o()

@@ -1,4 +1,4 @@
-use crate::NamedSignatureAlgorithm;
+use crate::{bail, Error, NamedSignatureAlgorithm, Result};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -7,6 +7,8 @@ pub enum KeyType {
     Secp256k1,
 }
 
+pub const KEY_TYPE_V: &[KeyType] = &[KeyType::Ed25519, KeyType::Secp256k1];
+
 impl KeyType {
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -14,11 +16,11 @@ impl KeyType {
             KeyType::Secp256k1 => "Secp256k1",
         }
     }
-    pub fn from_keri_prefix(s: &str) -> Result<Self, &'static str> {
+    pub fn from_keri_prefix(s: &str) -> Result<Self> {
         match s {
             "D" => Ok(Self::Ed25519),
             "1AAB" => Ok(Self::Secp256k1),
-            _ => Err("KeyType::from_keri_prefix failed: unknown prefix"),
+            _ => bail!("KeyType::from_keri_prefix failed: unknown prefix {:?}", s),
         }
     }
     /// The prefix used before the base64url-no-pad encoding of the key bytes.
@@ -60,12 +62,13 @@ impl std::fmt::Display for KeyType {
 }
 
 impl std::str::FromStr for KeyType {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Ed25519" => Ok(Self::Ed25519),
-            "Secp256k1" => Ok(Self::Secp256k1),
-            _ => Err("Unrecognized KeyType"),
+    type Err = Error;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        for &key_type in KEY_TYPE_V.iter() {
+            if key_type.as_str().eq_ignore_ascii_case(s) {
+                return Ok(key_type);
+            }
         }
+        bail!("Unrecognized KeyType {:?}", s)
     }
 }

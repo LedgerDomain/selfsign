@@ -1,4 +1,4 @@
-use crate::{Signature, SignatureAlgorithm, Signer, Verifier};
+use crate::{bail, require, Result, Signature, SignatureAlgorithm, Signer, Verifier};
 
 /// This is the canonical implementation of the SelfHashable::write_digest_data method for when the
 /// SelfHashable type implements Clone and the desired desired serialization format is
@@ -35,7 +35,7 @@ pub fn write_digest_data_using_jcs<S: Clone + SelfSignable + serde::Serialize>(
 ///   for the self-signature slots and the self-signature verifier slots).
 ///
 /// An easy default for the implementation of write_digest_data is provided by the
-/// write_digest_data_with_jcs function, which can be called from your implementation of
+/// write_digest_data_using_jcs function, which can be called from your implementation of
 /// write_digest_data if your type implements Clone and serde::Serialize and the desired serialization
 /// format is JSON Canonicalization Scheme (JCS).
 pub trait SelfSignable {
@@ -65,7 +65,7 @@ pub trait SelfSignable {
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn Verifier);
     /// Checks that all the self-signature slots are equal, returning error if they aren't.  Otherwise returns
     /// Some(self_signature) if they are set, and None if they are not set.
-    fn get_unverified_self_signature(&self) -> Result<Option<&dyn Signature>, &'static str> {
+    fn get_unverified_self_signature(&self) -> Result<Option<&dyn Signature>> {
         let total_self_signature_count = self.self_signature_oi().count();
         // First, ensure that the self-signature slots are either all Some(_) or all None.
         match self
@@ -89,10 +89,10 @@ pub trait SelfSignable {
                 // All self-signature slots are populated, so we have to check them.
             }
             Some(_) => {
-                return Err("This object is a malformed as SelfSigning because some but not all self-signature slots are populated -- it must be all or nothing.");
+                bail!("This object is a malformed as SelfSigning because some but not all self-signature slots are populated -- it must be all or nothing.");
             }
             None => {
-                return Err("This object has no self-signature slots, and therefore can't be self-signed or self-verified.");
+                bail!("This object has no self-signature slots, and therefore can't be self-signed or self-verified.");
             }
         }
 
@@ -102,17 +102,17 @@ pub trait SelfSignable {
             .self_signature_oi()
             .map(|self_signature_o| self_signature_o.unwrap())
         {
-            // TEMP HACK: Just use to_signature_bytes to have a concrete type to compare.
-            if self_signature.to_signature_bytes() != first_self_signature.to_signature_bytes() {
-                return Err("Object's self-signature slots do not all match.");
-            }
+            require!(
+                self_signature.equals(first_self_signature),
+                "Object's self-signature slots slots do not all match."
+            );
         }
         // If it got this far, it's valid.
         Ok(Some(first_self_signature))
     }
     /// Checks that all the self-signature verifier slots are equal, returning error if they aren't.
     /// Otherwise returns Some(verifier) if they are set, and None if they are not set.
-    fn get_self_signature_verifier(&self) -> Result<Option<&dyn Verifier>, &'static str> {
+    fn get_self_signature_verifier(&self) -> Result<Option<&dyn Verifier>> {
         let total_self_signature_verifier_count = self.self_signature_verifier_oi().count();
         // First, ensure that the self-signature verifier slots are either all Some(_) or all None.
         match self
@@ -137,36 +137,32 @@ pub trait SelfSignable {
                 // All self-signature verifier slots are populated, so we have to check them.
             }
             Some(_) => {
-                return Err("This object is a malformed as SelfSigning because some but not all self-signature verifier slots are populated -- it must be all or nothing.");
+                bail!("This object is a malformed as SelfSigning because some but not all self-signature verifier slots are populated -- it must be all or nothing.");
             }
             None => {
-                return Err("This object has no self-signature verifier slots slots, and therefore can't be self-signed or self-verified.");
+                bail!("This object has no self-signature verifier slots slots, and therefore can't be self-signed or self-verified.");
             }
         }
 
         let first_self_signature_verifier =
             self.self_signature_verifier_oi().nth(0).unwrap().unwrap();
+        // let first_self_signature_verifier_bytes = first_self_signature_verifier.as_preferred_verifier_format();
         // Now ensure all self-signature verifier slots are equal.
         for self_signature_verifier in self
             .self_signature_verifier_oi()
             .map(|verifier_o| verifier_o.unwrap())
         {
-            // TEMP HACK: Just use to_verifier_bytes to have a concrete type to compare.
-            if self_signature_verifier.to_verifier_bytes()
-                != first_self_signature_verifier.to_verifier_bytes()
-            {
-                return Err("Object's self-signature verifier slots slots do not all match.");
-            }
+            require!(
+                self_signature_verifier.equals(first_self_signature_verifier),
+                "Object's self-signature verifier slots slots do not all match."
+            );
         }
         // If it got this far, it's valid.
         Ok(Some(first_self_signature_verifier))
     }
     /// Computes the self-signature for this object.  Note that this ignores any existing values in
     /// the self-signature slots and self-signature verifier slots.
-    fn compute_self_signature(
-        &self,
-        signer: &dyn Signer,
-    ) -> Result<Box<dyn Signature>, &'static str> {
+    fn compute_self_signature(&self, signer: &dyn Signer) -> Result<Box<dyn Signature>> {
         let mut hasher_b = signer
             .signature_algorithm()
             .message_digest_hash_function()
@@ -181,7 +177,7 @@ pub trait SelfSignable {
     }
     /// Computes the self-signature and writes it into all the self-signature slots, and writes the verifier
     /// that is derived from signer into all the self-signature verifier slots.
-    fn self_sign(&mut self, signer: &dyn Signer) -> Result<&dyn Signature, &'static str> {
+    fn self_sign(&mut self, signer: &dyn Signer) -> Result<&dyn Signature> {
         let self_signature_b = self.compute_self_signature(signer)?;
         let verifier_b = signer.verifier();
         self.set_self_signature_slots_to(self_signature_b.as_ref());
@@ -191,7 +187,7 @@ pub trait SelfSignable {
     }
     /// Verifies the self-signatures in this object using the self-signature verifier and returns a reference
     /// to the verified self-signature.
-    fn verify_self_signatures<'a, 'b: 'a>(&'b self) -> Result<&'a dyn Signature, &'static str> {
+    fn verify_self_signatures<'a, 'b: 'a>(&'b self) -> Result<&'a dyn Signature> {
         let unverified_self_signature = self.get_unverified_self_signature()?.ok_or_else(|| {
             "This object has no self-signature slots, and therefore can't be self-signed or self-verified."
         })?;

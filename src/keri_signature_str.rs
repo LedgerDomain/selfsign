@@ -1,6 +1,6 @@
 use crate::{
-    NamedSignatureAlgorithm, Signature, SignatureAlgorithm, SignatureBytes, ED25519_SHA_512,
-    SECP256K1_SHA_256,
+    require, Error, NamedSignatureAlgorithm, PreferredSignatureFormat, Signature,
+    SignatureAlgorithm, SignatureBytes, ED25519_SHA_512, SECP256K1_SHA_256,
 };
 use std::borrow::Cow;
 
@@ -18,7 +18,7 @@ impl KERISignatureStr {
     pub fn data(&self) -> &str {
         &self.0[2..]
     }
-    pub fn to_signature_bytes(&self) -> SignatureBytes {
+    pub fn to_signature_bytes<'h>(&self) -> SignatureBytes<'h> {
         let keri_prefix = self.keri_prefix();
         let data = self.data();
         let signature_algorithm: &'static dyn SignatureAlgorithm = match keri_prefix {
@@ -45,14 +45,13 @@ impl KERISignatureStr {
 
 impl pneutype::Validate for KERISignatureStr {
     type Data = str;
-    type Error = &'static str;
-    fn validate(s: &Self::Data) -> Result<(), Self::Error> {
-        if s.len() < 2 {
-            return Err("string too short to be a KERISignature");
-        }
-        if !s.is_ascii() {
-            return Err("KERISignature strings must contain only ASCII chars");
-        }
+    type Error = Error;
+    fn validate(s: &Self::Data) -> std::result::Result<(), Self::Error> {
+        require!(s.len() >= 2, "string too short to be a KERISignature");
+        require!(
+            s.is_ascii(),
+            "KERISignature strings must contain only ASCII chars"
+        );
         let keri_prefix = &s[..2];
         let named_signature_algorithm = NamedSignatureAlgorithm::try_from_keri_prefix(keri_prefix)?;
         match named_signature_algorithm.signature_bytes_len() {
@@ -78,11 +77,7 @@ impl<'a> Signature for &'a KERISignatureStr {
             _ => panic!("this should not be possible"),
         }
     }
-    /// This will allocate, because it must convert an ASCII string representation into bytes.
-    fn to_signature_bytes<'s: 'h, 'h>(&'s self) -> SignatureBytes<'h> {
-        (*self).to_signature_bytes()
-    }
-    fn to_keri_signature<'s: 'h, 'h>(&'s self) -> Cow<'h, KERISignatureStr> {
-        Cow::Borrowed(self)
+    fn as_preferred_signature_format<'s: 'h, 'h>(&'s self) -> PreferredSignatureFormat<'h> {
+        PreferredSignatureFormat::KERISignature(Cow::Borrowed(self))
     }
 }

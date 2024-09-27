@@ -1,8 +1,8 @@
-use std::borrow::Cow;
-
 use crate::{
-    base64_encode_264_bits, KERIVerifier, KeyType, NamedSignatureAlgorithm, Signature, Verifier,
+    base64_encode_264_bits, error, require, KERIVerifier, KeyType, NamedSignatureAlgorithm,
+    PreferredVerifierFormat, Result, Signature, Verifier,
 };
+use std::borrow::Cow;
 
 /// This is meant to be used in end-use data structures that are self-signing.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,12 +25,14 @@ impl<'a> VerifierBytes<'a> {
             verifying_key_byte_v: Cow::Owned(self.verifying_key_byte_v.to_vec()),
         }
     }
-    pub fn to_keri_verifier(&self) -> Result<KERIVerifier, &'static str> {
-        if self.verifying_key_byte_v.len() != self.key_type.public_key_bytes_len() {
-            return Err(
-                "verifying_key_byte_v length does not match expected bytes length of KeyType",
-            );
-        }
+    pub fn to_keri_verifier(&self) -> Result<KERIVerifier> {
+        require!(
+            self.verifying_key_byte_v.len() == self.key_type.public_key_bytes_len(),
+            "verifying_key_byte_v length ({}) does not match expected bytes length ({}) of KeyType {:?}",
+            self.verifying_key_byte_v.len(),
+            self.key_type.public_key_bytes_len(),
+            self.key_type
+        );
         let keri_verifier_string = match self.key_type.public_key_bytes_len() {
             32 => {
                 let mut buffer = [0u8; 43];
@@ -91,21 +93,23 @@ impl Verifier for VerifierBytes<'_> {
     fn key_type(&self) -> KeyType {
         self.key_type
     }
-    /// This will not allocate.
-    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
-        VerifierBytes::<'h> {
+    fn as_preferred_verifier_format<'s: 'h, 'h>(&'s self) -> PreferredVerifierFormat<'h> {
+        PreferredVerifierFormat::VerifierBytes(VerifierBytes {
             key_type: self.key_type,
             verifying_key_byte_v: Cow::Borrowed(&self.verifying_key_byte_v),
-        }
+        })
     }
     fn verify_digest(
         &self,
         _message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
-    ) -> Result<(), &'static str> {
-        if self.key_type != signature.signature_algorithm().key_type() {
-            return Err("key_type must match that of signature_algorithm");
-        }
+    ) -> Result<()> {
+        require!(
+            self.key_type == signature.signature_algorithm().key_type(),
+            "key_type ({:?}) must match that of signature_algorithm ({:?})",
+            self.key_type,
+            signature.signature_algorithm().key_type()
+        );
         // TODO: It would be better if this dispatched to the specific verifiers instead of
         // invoking ed25519-dalek and k256 crates directly here.
         match signature.signature_algorithm().named_signature_algorithm() {
@@ -124,7 +128,7 @@ impl Verifier for VerifierBytes<'_> {
                             None,
                             &ed25519_dalek_signature,
                         )
-                        .map_err(|_| "Ed25519_SHA_512 signature verification failed")
+                        .map_err(|e| error!("Ed25519_SHA_512 signature verification failed: {}", e))
                 }
                 #[cfg(not(feature = "ed25519-dalek"))]
                 {
@@ -145,7 +149,7 @@ impl Verifier for VerifierBytes<'_> {
                             .expect("programmer error: message digest must be sha2::Sha256"),
                         &k256_signature,
                     )
-                    .map_err(|_| "Secp256k1_SHA_256 signature verification failed")
+                    .map_err(|e| error!("Secp256k1_SHA_256 signature verification failed: {}", e))
                 }
                 #[cfg(not(feature = "k256"))]
                 {

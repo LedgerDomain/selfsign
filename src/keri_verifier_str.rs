@@ -1,5 +1,6 @@
 use crate::{
-    base64_decode_264_bits, KeyType, NamedSignatureAlgorithm, Signature, Verifier, VerifierBytes,
+    bail, base64_decode_264_bits, error, require, Error, KeyType, NamedSignatureAlgorithm,
+    PreferredVerifierFormat, Result, Signature, Verifier, VerifierBytes,
 };
 use std::borrow::Cow;
 
@@ -11,7 +12,7 @@ use std::borrow::Cow;
 pub struct KERIVerifierStr(str);
 
 impl KERIVerifierStr {
-    pub fn to_verifier_bytes(&self) -> VerifierBytes {
+    pub fn to_verifier_bytes<'v>(&self) -> VerifierBytes<'v> {
         match self.len() {
             44 => {
                 // NOTE: This assumes that 44 chars imply a 1-char prefix and a 43-char base64 string.
@@ -45,11 +46,12 @@ impl KERIVerifierStr {
 
 impl pneutype::Validate for KERIVerifierStr {
     type Data = str;
-    type Error = &'static str;
-    fn validate(s: &Self::Data) -> Result<(), Self::Error> {
-        if !s.is_ascii() {
-            return Err("KERIVerifier strings must contain only ASCII chars");
-        }
+    type Error = Error;
+    fn validate(s: &Self::Data) -> std::result::Result<(), Self::Error> {
+        require!(
+            s.is_ascii(),
+            "KERIVerifier strings must contain only ASCII chars"
+        );
         match s.len() {
             44 => {
                 // NOTE: This assumes that 44 chars imply a 1-char prefix and a 43-char base64 string.
@@ -64,7 +66,10 @@ impl pneutype::Validate for KERIVerifierStr {
                 base64_decode_264_bits(&s[4..], &mut buffer)?;
             }
             _ => {
-                return Err("invalid length for KERIVerifier string; expected 44 or 48 chars");
+                bail!(
+                    "invalid length for KERIVerifier string; expected 44 or 48 chars but got {}",
+                    s.len()
+                );
             }
         }
         Ok(())
@@ -90,18 +95,14 @@ impl<'a> Verifier for &'a KERIVerifierStr {
             }
         }
     }
-    /// This will allocate, because KERIVerifier is an ASCII string representation and must be converted into bytes.
-    fn to_verifier_bytes<'s: 'h, 'h>(&'s self) -> VerifierBytes<'h> {
-        (*self).to_verifier_bytes()
-    }
-    fn to_keri_verifier<'s: 'h, 'h>(&'s self) -> Cow<'h, KERIVerifierStr> {
-        Cow::Borrowed(*self)
+    fn as_preferred_verifier_format<'s: 'h, 'h>(&'s self) -> PreferredVerifierFormat<'h> {
+        PreferredVerifierFormat::KERIVerifier(Cow::Borrowed(*self))
     }
     fn verify_digest(
         &self,
         message_digest_b: Box<dyn selfhash::Hasher>,
         signature: &dyn Signature,
-    ) -> Result<(), &'static str> {
+    ) -> Result<()> {
         if !message_digest_b.hash_function().equals(
             signature
                 .signature_algorithm()
@@ -109,9 +110,12 @@ impl<'a> Verifier for &'a KERIVerifierStr {
         ) {
             panic!("programmer error: message_digest and verifier hash functions must match");
         }
-        if self.key_type() != signature.signature_algorithm().key_type() {
-            return Err("key_type must match that of signature_algorithm");
-        }
+        require!(
+            self.key_type() == signature.signature_algorithm().key_type(),
+            "key_type ({:?}) must match that of signature_algorithm ({:?})",
+            self.key_type(),
+            signature.signature_algorithm().key_type()
+        );
         // TODO: It would be better if this dispatched to the specific verifiers instead of
         // invoking ed25519-dalek and k256 crates directly here.
         match signature.signature_algorithm().named_signature_algorithm() {
@@ -131,7 +135,7 @@ impl<'a> Verifier for &'a KERIVerifierStr {
                             None,
                             &ed25519_dalek_signature,
                         )
-                        .map_err(|_| "Ed25519_SHA_512 signature verification failed")
+                        .map_err(|e| error!("Ed25519_SHA_512 signature verification failed: {}", e))
                 }
                 #[cfg(not(feature = "ed25519-dalek"))]
                 {
@@ -154,7 +158,7 @@ impl<'a> Verifier for &'a KERIVerifierStr {
                             .expect("programmer error: message_digest must be sha2::Sha256"),
                         &k256_signature,
                     )
-                    .map_err(|_| "Secp256k1_SHA_256 signature verification failed")
+                    .map_err(|e| error!("Secp256k1_SHA_256 signature verification failed: {}", e))
                 }
                 #[cfg(not(feature = "k256"))]
                 {
