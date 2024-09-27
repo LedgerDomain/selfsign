@@ -69,6 +69,10 @@ impl std::str::FromStr for KeyType {
                 return Ok(key_type);
             }
         }
-        bail!("Unrecognized KeyType {:?}", s)
+        bail!(
+            "Unrecognized KeyType {:?}, expected one of: {:?}",
+            s,
+            KEY_TYPE_V
+        )
     }
 }
