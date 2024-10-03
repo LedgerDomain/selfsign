@@ -22,20 +22,20 @@ impl<T: Clone + selfhash::SelfHashable + SelfSignable> SelfSignAndHashable for T
         signer: &dyn Signer,
         hasher_b: Box<dyn selfhash::Hasher>,
     ) -> Result<(&dyn Signature, &dyn selfhash::Hash)> {
-        self.set_self_hash_slots_to(hasher_b.hash_function().placeholder_hash());
+        self.set_self_hash_slots_to(hasher_b.hash_function().placeholder_hash())?;
         self.self_sign(signer)?;
         self.self_hash(hasher_b)?;
         let self_signature = self.self_signature_oi().next().unwrap().unwrap();
-        let self_hash = self.self_hash_oi().next().unwrap().unwrap();
+        let self_hash = self.self_hash_oi()?.next().unwrap().unwrap();
         Ok((self_signature, self_hash))
     }
     fn verify_self_signatures_and_hashes<'a, 'b: 'a>(
         &'b self,
     ) -> Result<(&'a dyn Signature, &'a dyn selfhash::Hash)> {
         let self_hash = self.verify_self_hashes()?;
-        let placeholder_hash = self_hash.hash_function().placeholder_hash();
+        let placeholder_hash = self_hash.hash_function()?.placeholder_hash();
         let mut c = self.clone();
-        c.set_self_hash_slots_to(placeholder_hash);
+        c.set_self_hash_slots_to(placeholder_hash)?;
         c.verify_self_signatures()?;
         let self_signature = self.self_signature_oi().next().unwrap().unwrap();
         Ok((self_signature, self_hash))

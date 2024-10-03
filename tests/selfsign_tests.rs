@@ -934,21 +934,23 @@ impl selfsign::SelfSignable for TestData {
 }
 
 impl selfhash::SelfHashable for TestData {
-    fn write_digest_data(&self, hasher: &mut dyn selfhash::Hasher) {
-        selfhash::write_digest_data_using_jcs(self, hasher);
+    fn write_digest_data(&self, hasher: &mut dyn selfhash::Hasher) -> selfhash::Result<()> {
+        selfhash::write_digest_data_using_jcs(self, hasher)
     }
     fn self_hash_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfhash::Hash>> + 'a> {
-        Box::new(std::iter::once(
+    ) -> selfhash::Result<Box<dyn std::iter::Iterator<Item = Option<&dyn selfhash::Hash>> + 'a>>
+    {
+        Ok(Box::new(std::iter::once(
             self.self_hash_o
                 .as_ref()
                 .map(|h| -> &dyn selfhash::Hash { h }),
-        ))
+        )))
     }
-    fn set_self_hash_slots_to(&mut self, hash: &dyn selfhash::Hash) {
-        let keri_hash = hash.to_keri_hash();
+    fn set_self_hash_slots_to(&mut self, hash: &dyn selfhash::Hash) -> selfhash::Result<()> {
+        let keri_hash = hash.to_keri_hash()?;
         self.self_hash_o = Some(keri_hash.into_owned());
+        Ok(())
     }
 }
 

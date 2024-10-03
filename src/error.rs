@@ -34,6 +34,13 @@ impl From<String> for Error {
     }
 }
 
+#[cfg(feature = "self-signable-json")]
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self(Cow::Owned(e.to_string()))
+    }
+}
+
 impl Into<Cow<'static, str>> for Error {
     fn into(self) -> Cow<'static, str> {
         self.0
