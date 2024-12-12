@@ -1,5 +1,5 @@
 use crate::{
-    base64_encode_264_bits, error, require, KERIVerifier, KeyType, NamedSignatureAlgorithm,
+    base64_encode_264_bits, require, KERIVerifier, KeyType, NamedSignatureAlgorithm,
     PreferredVerifierFormat, Result, Signature, Verifier,
 };
 use std::borrow::Cow;
@@ -128,7 +128,9 @@ impl Verifier for VerifierBytes<'_> {
                             None,
                             &ed25519_dalek_signature,
                         )
-                        .map_err(|e| error!("Ed25519_SHA_512 signature verification failed: {}", e))
+                        .map_err(|e| {
+                            crate::error!("Ed25519_SHA_512 signature verification failed: {}", e)
+                        })
                 }
                 #[cfg(not(feature = "ed25519-dalek"))]
                 {
@@ -149,7 +151,9 @@ impl Verifier for VerifierBytes<'_> {
                             .expect("programmer error: message digest must be sha2::Sha256"),
                         &k256_signature,
                     )
-                    .map_err(|e| error!("Secp256k1_SHA_256 signature verification failed: {}", e))
+                    .map_err(|e| {
+                        crate::error!("Secp256k1_SHA_256 signature verification failed: {}", e)
+                    })
                 }
                 #[cfg(not(feature = "k256"))]
                 {

@@ -1,6 +1,7 @@
 use crate::{bail, Error, NamedSignatureAlgorithm, Result};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum KeyType {
     Ed25519,
