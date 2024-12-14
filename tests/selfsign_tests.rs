@@ -1016,3 +1016,121 @@ fn test_self_signable_json() {
     );
     value.verify_self_signatures().expect("pass");
 }
+
+#[cfg(feature = "pkcs8")]
+#[test]
+fn test_write_and_read_pkcs8_pem_file_ed25519_dalek() {
+    let key_type = selfsign::KeyType::Ed25519;
+    let private_key_path = std::path::PathBuf::from(format!("tests/{:?}.pem", key_type));
+    if std::fs::exists(&private_key_path).unwrap() {
+        std::fs::remove_file(&private_key_path).unwrap();
+    }
+
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+    let signer: &dyn selfsign::Signer = &signing_key;
+
+    signer
+        .write_to_pkcs8_pem_file(&private_key_path)
+        .expect("pass");
+
+    // Read the key back in.
+    let read_signing_key =
+        ed25519_dalek::SigningKey::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+
+    // Compare the two.
+    assert_eq!(read_signing_key, signing_key);
+}
+
+#[cfg(feature = "pkcs8")]
+#[test]
+fn test_write_and_read_pkcs8_pem_file_k256() {
+    let key_type = selfsign::KeyType::Secp256k1;
+    let private_key_path = std::path::PathBuf::from(format!("tests/{:?}.pem", key_type));
+    if std::fs::exists(&private_key_path).unwrap() {
+        std::fs::remove_file(&private_key_path).unwrap();
+    }
+
+    let signing_key = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let signer: &dyn selfsign::Signer = &signing_key;
+
+    signer
+        .write_to_pkcs8_pem_file(&private_key_path)
+        .expect("pass");
+
+    // Read the key back in.
+    let read_signing_key =
+        k256::ecdsa::SigningKey::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+
+    // Compare the two.
+    assert_eq!(read_signing_key, signing_key);
+}
+
+#[cfg(feature = "pkcs8")]
+#[test]
+fn test_write_and_read_pkcs8_pem_file_private_key_bytes_ed25519_dalek() {
+    let key_type = selfsign::KeyType::Ed25519;
+    let private_key_path =
+        std::path::PathBuf::from(format!("tests/PrivateKeyBytes.{:?}.pem", key_type));
+    if std::fs::exists(&private_key_path).unwrap() {
+        std::fs::remove_file(&private_key_path).unwrap();
+    }
+
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+    let private_key_bytes = signing_key.to_private_key_bytes();
+    let signer: &dyn selfsign::Signer = &private_key_bytes;
+
+    signer
+        .write_to_pkcs8_pem_file(&private_key_path)
+        .expect("pass");
+
+    // Read the key back in as PrivateKeyBytes
+    let read_private_key_bytes =
+        selfsign::PrivateKeyBytes::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+    // Check
+    assert_eq!(
+        read_private_key_bytes.signature_algorithm().key_type(),
+        key_type
+    );
+    assert_eq!(read_private_key_bytes, private_key_bytes);
+
+    // Read the key back in also as ed25519_dalek::SigningKey
+    let read_signing_key =
+        ed25519_dalek::SigningKey::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+    // Check
+    assert_eq!(read_signing_key, signing_key);
+}
+
+#[cfg(feature = "pkcs8")]
+#[test]
+fn test_write_and_read_pkcs8_pem_file_private_key_bytes_k256() {
+    let key_type = selfsign::KeyType::Secp256k1;
+    let private_key_path =
+        std::path::PathBuf::from(format!("tests/PrivateKeyBytes.{:?}.pem", key_type));
+    if std::fs::exists(&private_key_path).unwrap() {
+        std::fs::remove_file(&private_key_path).unwrap();
+    }
+
+    let signing_key = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let private_key_bytes = signing_key.to_private_key_bytes();
+    let signer: &dyn selfsign::Signer = &private_key_bytes;
+
+    signer
+        .write_to_pkcs8_pem_file(&private_key_path)
+        .expect("pass");
+
+    // Read the key back in as PrivateKeyBytes
+    let read_private_key_bytes =
+        selfsign::PrivateKeyBytes::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+    // Check
+    assert_eq!(
+        read_private_key_bytes.signature_algorithm().key_type(),
+        key_type
+    );
+    assert_eq!(read_private_key_bytes, private_key_bytes);
+
+    // Read the key back in also as ed25519_dalek::SigningKey
+    let read_signing_key =
+        k256::ecdsa::SigningKey::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
+    // Check
+    assert_eq!(read_signing_key, signing_key);
+}

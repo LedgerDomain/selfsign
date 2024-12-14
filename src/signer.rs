@@ -39,4 +39,12 @@ pub trait Signer {
     }
     /// This signs a pre-hashed message, i.e. signs the digest produced by the given hasher.
     fn sign_digest(&self, hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>>;
+    /// Write this Signer to file in PKCS8 format, i.e. as a `.pem` file.
+    /// This is only supported if the "pkcs8" feature has been enabled.
+    fn write_to_pkcs8_pem_file(&self, private_key_path: &std::path::Path) -> Result<()>;
+    /// Read an instance of this Signer from the given PKCS8-formatted PEM file
+    /// This is only supported if the "pkcs8" feature has been enabled.
+    fn read_from_pkcs8_pem_file(private_key_path: &std::path::Path) -> Result<Self>
+    where
+        Self: Sized;
 }

@@ -151,4 +151,106 @@ impl Signer for PrivateKeyBytes<'_> {
             }
         }
     }
+    fn write_to_pkcs8_pem_file(&self, private_key_path: &std::path::Path) -> Result<()> {
+        #[cfg(feature = "pkcs8")]
+        {
+            match self.key_type.default_named_signature_algorithm() {
+                NamedSignatureAlgorithm::ED25519_SHA_512 => {
+                    #[cfg(feature = "ed25519-dalek")]
+                    {
+                        let secret_key =
+                            ed25519_dalek::SecretKey::try_from(self.private_key_byte_v.as_ref())
+                                .expect("this should not fail because of check in new");
+                        let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_key);
+                        use ed25519_dalek::pkcs8::EncodePrivateKey;
+                        signing_key
+                            .write_pkcs8_pem_file(private_key_path, Default::default())
+                            .map_err(|e| crate::Error::from(e.to_string()))?;
+                        Ok(())
+                    }
+                    #[cfg(not(feature = "ed25519-dalek"))]
+                    {
+                        panic!("ed25519-dalek feature not enabled");
+                    }
+                }
+                NamedSignatureAlgorithm::SECP256K1_SHA_256 => {
+                    #[cfg(feature = "k256")]
+                    {
+                        let signing_key =
+                            k256::ecdsa::SigningKey::from_slice(self.private_key_byte_v.as_ref())
+                                .expect("this should not fail because of check in new");
+                        let secret_key = k256::elliptic_curve::SecretKey::from(signing_key);
+                        use k256::pkcs8::EncodePrivateKey;
+                        secret_key
+                            .write_pkcs8_pem_file(private_key_path, Default::default())
+                            .map_err(|e| crate::Error::from(e.to_string()))?;
+                        Ok(())
+                    }
+                    #[cfg(not(feature = "k256"))]
+                    {
+                        panic!("k256 feature not enabled");
+                    }
+                }
+                _ => {
+                    panic!("unrecognized signature algorithm");
+                }
+            }
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
+    fn read_from_pkcs8_pem_file(private_key_path: &std::path::Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        #[cfg(feature = "pkcs8")]
+        {
+            // TODO: Better would be to detect what key type the file claims to represent, so that a single,
+            // specific format can be used, instead of guessing and having incomplete information about if
+            // there's a problem.
+            for &key_type in crate::KEY_TYPE_V {
+                match key_type {
+                    KeyType::Ed25519 => {
+                        #[cfg(feature = "ed25519-dalek")]
+                        {
+                            // use pkcs8::DecodePrivateKey;
+                            if let Ok(signing_key) =
+                                ed25519_dalek::SigningKey::read_from_pkcs8_pem_file(
+                                    &private_key_path,
+                                )
+                            {
+                                return Ok(signing_key.to_private_key_bytes().into_owned());
+                            }
+                        }
+                    }
+                    KeyType::Secp256k1 => {
+                        #[cfg(feature = "k256")]
+                        {
+                            // use pkcs8::DecodePrivateKey;
+                            if let Ok(signing_key) =
+                                k256::ecdsa::SigningKey::read_from_pkcs8_pem_file(&private_key_path)
+                            {
+                                return Ok(signing_key.to_private_key_bytes().into_owned());
+                            }
+                        }
+                    }
+                }
+            }
+            return Err(crate::Error::from(format!("Private key at path {:?} was not in a recognized format.  The problem might be that the `ed25519-dalek` and/or the `k256` features haven't been enabled.", private_key_path)));
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
 }

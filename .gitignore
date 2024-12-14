@@ -2,3 +2,4 @@ Cargo.lock
 target
 attic
 .vscode/settings.json
+*.pem

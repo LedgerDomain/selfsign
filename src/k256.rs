@@ -38,6 +38,43 @@ impl Signer for k256::ecdsa::SigningKey {
         );
         Ok(Box::new(signature))
     }
+    fn write_to_pkcs8_pem_file(&self, private_key_path: &std::path::Path) -> Result<()> {
+        #[cfg(feature = "pkcs8")]
+        {
+            let secret_key = k256::elliptic_curve::SecretKey::from(self);
+            use k256::pkcs8::EncodePrivateKey;
+            secret_key
+                .write_pkcs8_pem_file(private_key_path, Default::default())
+                .map_err(|e| Error::from(e.to_string()))?;
+            Ok(())
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
+    fn read_from_pkcs8_pem_file(private_key_path: &std::path::Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        #[cfg(feature = "pkcs8")]
+        {
+            use pkcs8::DecodePrivateKey;
+            Self::read_pkcs8_pem_file(&private_key_path).map_err(|e| Error::from(e.to_string()))
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
 }
 
 impl Signature for k256::ecdsa::Signature {

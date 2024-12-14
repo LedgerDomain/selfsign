@@ -38,6 +38,41 @@ impl Signer for ed25519_dalek::SigningKey {
         );
         Ok(Box::new(signature))
     }
+    fn write_to_pkcs8_pem_file(&self, private_key_path: &std::path::Path) -> Result<()> {
+        #[cfg(feature = "pkcs8")]
+        {
+            use ed25519_dalek::pkcs8::EncodePrivateKey;
+            self.write_pkcs8_pem_file(private_key_path, Default::default())
+                .map_err(|e| Error::from(e.to_string()))?;
+            Ok(())
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
+    fn read_from_pkcs8_pem_file(private_key_path: &std::path::Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        #[cfg(feature = "pkcs8")]
+        {
+            use pkcs8::DecodePrivateKey;
+            Self::read_pkcs8_pem_file(&private_key_path).map_err(|e| Error::from(e.to_string()))
+        }
+
+        #[cfg(not(feature = "pkcs8"))]
+        {
+            let _ = private_key_path;
+            panic!(
+                "programmer error: `pkcs8` feature must be enabled in order to write private key"
+            );
+        }
+    }
 }
 
 impl Signature for ed25519_dalek::Signature {
