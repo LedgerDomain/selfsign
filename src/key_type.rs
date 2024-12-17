@@ -3,6 +3,7 @@ use crate::{bail, Error, NamedSignatureAlgorithm, Result};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "wasm-bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 pub enum KeyType {
     Ed25519,
     Secp256k1,
