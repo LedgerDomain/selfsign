@@ -50,6 +50,51 @@ impl<'a> PrivateKeyBytes<'a> {
     }
     // NOTE: "KERISigner" doesn't exactly exist as a concept.  The closest thing is storing seeds
     // for generating private keys (see https://weboftrust.github.io/ietf-cesr/draft-ssmith-cesr.html#section-4.2)
+    /// Produce this private key as a JWK using the ssi-jwk crate.
+    #[cfg(feature = "ssi-jwk")]
+    pub fn to_ssi_jwk(&self) -> Result<ssi_jwk::JWK> {
+        match self.key_type {
+            KeyType::Ed25519 => {
+                #[cfg(feature = "ed25519-dalek")]
+                {
+                    let secret_key =
+                        ed25519_dalek::SecretKey::try_from(self.private_key_byte_v.as_ref())
+                            .expect("this should not fail because of check in new");
+                    let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_key);
+                    let verifying_key = signing_key.verifying_key();
+                    let jwk = ssi_jwk::JWK::from(ssi_jwk::Params::OKP(ssi_jwk::OctetParams {
+                        curve: "Ed25519".to_string(),
+                        public_key: ssi_jwk::Base64urlUInt(verifying_key.to_bytes().to_vec()),
+                        private_key: Some(ssi_jwk::Base64urlUInt(signing_key.to_bytes().to_vec())),
+                    }));
+                    Ok(jwk)
+                }
+                #[cfg(not(feature = "ed25519-dalek"))]
+                {
+                    panic!("ed25519-dalek feature not enabled");
+                }
+            }
+            KeyType::Secp256k1 => {
+                #[cfg(feature = "k256")]
+                {
+                    let signing_key =
+                        k256::ecdsa::SigningKey::from_slice(self.private_key_byte_v.as_ref())
+                            .expect("this should not fail because of check in new");
+                    let secret_key = k256::SecretKey::from(signing_key);
+                    let public_key = secret_key.public_key();
+                    let mut ec_params = ssi_jwk::ECParams::from(&public_key);
+                    ec_params.ecc_private_key =
+                        Some(ssi_jwk::Base64urlUInt(self.private_key_byte_v.to_vec()));
+                    let jwk = ssi_jwk::JWK::from(ssi_jwk::Params::EC(ec_params));
+                    Ok(jwk)
+                }
+                #[cfg(not(feature = "k256"))]
+                {
+                    panic!("k256 feature not enabled");
+                }
+            }
+        }
+    }
 }
 
 impl AsRef<[u8]> for PrivateKeyBytes<'_> {
@@ -116,6 +161,47 @@ impl Signer for PrivateKeyBytes<'_> {
     }
     fn to_key_byte_v(&self) -> Vec<u8> {
         self.private_key_byte_v.to_vec()
+    }
+    fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>> {
+        match self.key_type.default_named_signature_algorithm() {
+            NamedSignatureAlgorithm::ED25519_SHA_512 => {
+                #[cfg(feature = "ed25519-dalek")]
+                {
+                    let secret_key =
+                        ed25519_dalek::SecretKey::try_from(self.private_key_byte_v.as_ref())
+                            .expect("this should not fail because of check in new");
+                    let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_key);
+                    use ed25519_dalek::Signer;
+                    let signature = signing_key.sign(message_byte_v);
+                    Ok(Box::new(signature))
+                }
+                #[cfg(not(feature = "ed25519-dalek"))]
+                {
+                    panic!("ed25519-dalek feature not enabled");
+                }
+            }
+            NamedSignatureAlgorithm::SECP256K1_SHA_256 => {
+                #[cfg(feature = "k256")]
+                {
+                    let signing_key =
+                        k256::ecdsa::SigningKey::from_slice(self.private_key_byte_v.as_ref())
+                            .expect("this should not fail because of check in new");
+
+                    use selfhash::HashFunction;
+                    let mut hasher_b = selfhash::SHA256.new_hasher();
+                    hasher_b.update(message_byte_v);
+
+                    signing_key.sign_digest(hasher_b)
+                }
+                #[cfg(not(feature = "k256"))]
+                {
+                    panic!("k256 feature not enabled");
+                }
+            }
+            _ => {
+                panic!("unrecognized signature algorithm");
+            }
+        }
     }
     fn sign_digest(&self, _hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>> {
         match self.key_type.default_named_signature_algorithm() {

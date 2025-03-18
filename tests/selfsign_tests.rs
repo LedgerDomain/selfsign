@@ -185,7 +185,7 @@ impl selfsign::SelfSignable for FancyData {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Signature>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_o
                 .as_ref()
@@ -197,7 +197,7 @@ impl selfsign::SelfSignable for FancyData {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Verifier>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_verifier_o
                 .as_ref()
@@ -543,7 +543,7 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Signature>> + 'a> {
         Box::new(
             std::iter::once(Some(&self.uri.signature as &dyn selfsign::Signature)).chain(
                 std::iter::once(
@@ -561,7 +561,7 @@ impl selfsign::SelfSignable for KeyMaterialRoot {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Verifier>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_verifier_o
                 .as_ref()
@@ -631,7 +631,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Signature>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_o
                 .as_ref()
@@ -644,7 +644,7 @@ impl selfsign::SelfSignable for KeyMaterialNonRoot {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Verifier>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_verifier_o
                 .as_ref()
@@ -908,7 +908,7 @@ impl selfsign::SelfSignable for TestData {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Signature>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_o
                 .as_ref()
@@ -921,7 +921,7 @@ impl selfsign::SelfSignable for TestData {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn selfsign::Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfsign::Verifier>> + 'a> {
         Box::new(std::iter::once(
             self.self_signature_verifier_o
                 .as_ref()
@@ -939,7 +939,7 @@ impl selfhash::SelfHashable for TestData {
     }
     fn self_hash_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> selfhash::Result<Box<dyn std::iter::Iterator<Item = Option<&dyn selfhash::Hash>> + 'a>>
+    ) -> selfhash::Result<Box<dyn std::iter::Iterator<Item = Option<&'b dyn selfhash::Hash>> + 'a>>
     {
         Ok(Box::new(std::iter::once(
             self.self_hash_o
@@ -1133,4 +1133,150 @@ fn test_write_and_read_pkcs8_pem_file_private_key_bytes_k256() {
         k256::ecdsa::SigningKey::read_from_pkcs8_pem_file(&private_key_path).expect("pass");
     // Check
     assert_eq!(read_signing_key, signing_key);
+}
+
+#[cfg(all(feature = "ssi-jwk", feature = "ed25519-dalek"))]
+#[test]
+fn test_ssi_jwk_ed25519_dalek() {
+    for _ in 0..5 {
+        let signing_key = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+        let priv_jwk = signing_key
+            .to_private_key_bytes()
+            .to_ssi_jwk()
+            .expect("pass");
+        for i in 0..5 {
+            // Sign something with priv_jwk, then verify with verifying_key.
+            let payload = format!("hippos are #{}!", i + 1);
+            use std::borrow::Cow;
+
+            use pollster::FutureExt;
+            use ssi_jws::JwsPayload;
+            let jws = payload.sign(&priv_jwk).block_on().expect("pass");
+            println!("jws: {:?}", jws);
+
+            let (message, signature_base64) = jws.as_str().rsplit_once('.').expect("pass");
+            println!("message: {:?}", message);
+
+            // Also sign using selfsign::Signer, then verify using selfsign::Verifier.
+            let signer_signature = {
+                use selfsign::Signer;
+                signing_key.sign_message(message.as_bytes()).expect("pass")
+            };
+            let signer_signature_base64 = {
+                let mut buffer = [0u8; 86];
+                selfhash::base64_encode_512_bits(
+                    <&[u8; 64]>::try_from(
+                        signer_signature
+                            .to_signature_bytes()
+                            .signature_byte_v
+                            .as_ref(),
+                    )
+                    .expect("pass"),
+                    &mut buffer,
+                )
+                .to_string()
+            };
+            println!(
+                "signer_signature_base64: {:?} ({} chars)",
+                signer_signature_base64,
+                signer_signature_base64.chars().count()
+            );
+
+            // Manually verify using verifying_key.
+            println!(
+                "signature_base64: {:?} ({} chars)",
+                signature_base64,
+                signature_base64.chars().count()
+            );
+            // Base64-decode the signature.
+            let signature_bytes = {
+                let mut buffer = [0u8; 66];
+                selfhash::base64_decode_512_bits(signature_base64, &mut buffer)
+                    .expect("pass")
+                    .to_vec()
+            };
+            let signature = selfsign::SignatureBytes {
+                named_signature_algorithm: selfsign::NamedSignatureAlgorithm::ED25519_SHA_512,
+                signature_byte_v: Cow::Borrowed(signature_bytes.as_slice()),
+            };
+            // Verify the signature.
+            let verifier = signing_key.verifier();
+            verifier
+                .verify_message(message.as_bytes(), &signature)
+                .expect("pass");
+        }
+    }
+}
+
+#[cfg(all(feature = "ssi-jwk", feature = "k256"))]
+#[test]
+fn test_ssi_jwk_k256() {
+    for _ in 0..5 {
+        let signing_key = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+        let priv_jwk = signing_key
+            .to_private_key_bytes()
+            .to_ssi_jwk()
+            .expect("pass");
+        for i in 0..5 {
+            // Sign something with priv_jwk, then verify with verifying_key.
+            let payload = format!("hippos are #{}!", i + 1);
+            use std::borrow::Cow;
+
+            use pollster::FutureExt;
+            use ssi_jws::JwsPayload;
+            let jws = payload.sign(&priv_jwk).block_on().expect("pass");
+            println!("jws: {:?}", jws);
+
+            let (message, signature_base64) = jws.as_str().rsplit_once('.').expect("pass");
+            println!("message: {:?}", message);
+
+            // Also sign using selfsign::Signer, then verify using selfsign::Verifier.
+            let signer_signature = {
+                use selfsign::Signer;
+                signing_key.sign_message(message.as_bytes()).expect("pass")
+            };
+            let signer_signature_base64 = {
+                let mut buffer = [0u8; 86];
+                selfhash::base64_encode_512_bits(
+                    <&[u8; 64]>::try_from(
+                        signer_signature
+                            .to_signature_bytes()
+                            .signature_byte_v
+                            .as_ref(),
+                    )
+                    .expect("pass"),
+                    &mut buffer,
+                )
+                .to_string()
+            };
+            println!(
+                "signer_signature_base64: {:?} ({} chars)",
+                signer_signature_base64,
+                signer_signature_base64.chars().count()
+            );
+
+            // Manually verify using verifying_key.
+            println!(
+                "signature_base64: {:?} ({} chars)",
+                signature_base64,
+                signature_base64.chars().count()
+            );
+            // Base64-decode the signature.
+            let signature_bytes = {
+                let mut buffer = [0u8; 66];
+                selfhash::base64_decode_512_bits(signature_base64, &mut buffer)
+                    .expect("pass")
+                    .to_vec()
+            };
+            let signature = selfsign::SignatureBytes {
+                named_signature_algorithm: selfsign::NamedSignatureAlgorithm::SECP256K1_SHA_256,
+                signature_byte_v: Cow::Borrowed(signature_bytes.as_slice()),
+            };
+            // Verify the signature.
+            let verifier = signing_key.verifier();
+            verifier
+                .verify_message(message.as_bytes(), &signature)
+                .expect("pass");
+        }
+    }
 }

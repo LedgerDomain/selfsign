@@ -23,20 +23,8 @@ pub trait Signer {
         self.copy_key_bytes(key_byte_v.as_mut_slice());
         key_byte_v
     }
-    /// This signs a message, i.e. hashes the message and then signs the digest.
-    /// This is a convenience function that is equivalent to instantiating the
-    /// appropriate Hasher for the Signer (the Hasher is defined by the SignatureAlgorithm)
-    /// and then calling sign_digest on it.  For a long message, especially if it's not
-    /// already in a contiguous byte array, it is more efficient to use the Hasher and
-    /// then call sign_digest.
-    fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>> {
-        let mut hasher_b = self
-            .signature_algorithm()
-            .message_digest_hash_function()
-            .new_hasher();
-        hasher_b.update(message_byte_v);
-        self.sign_digest(hasher_b)
-    }
+    /// This signs a message in the way specific to the SignatureAlgorithm.
+    fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>>;
     /// This signs a pre-hashed message, i.e. signs the digest produced by the given hasher.
     fn sign_digest(&self, hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>>;
     /// Write this Signer to file in PKCS8 format, i.e. as a `.pem` file.

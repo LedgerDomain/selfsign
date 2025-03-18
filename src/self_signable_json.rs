@@ -24,6 +24,14 @@ impl Verifier for serde_json::Value {
                 .expect("expected selfSignatureVerifier to be a valid KERIVerifier"),
         ))
     }
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
+        let value_str = self
+            .as_str()
+            .expect("expected selfSignatureVerifier to be a valid string");
+        KERIVerifierStr::new_ref(value_str)
+            .expect("expected selfSignatureVerifier to be a valid KERIVerifier")
+            .verify_message(message_byte_v, signature)
+    }
     fn verify_digest(
         &self,
         message_digest_b: Box<dyn selfhash::Hasher>,
@@ -70,7 +78,7 @@ impl SelfSignable for serde_json::Value {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Signature>> + 'a> {
         if !self.is_object() {
             panic!("self-signable JSON value is expected to be a JSON object");
         }
@@ -97,7 +105,7 @@ impl SelfSignable for serde_json::Value {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Verifier>> + 'a> {
         if !self.is_object() {
             panic!("self-signable JSON value is expected to be a JSON object");
         }
@@ -136,7 +144,7 @@ impl SelfSignable for selfhash::SelfHashableJSON<'_, '_> {
     }
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Signature>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Signature>> + 'a> {
         if !self.value().is_object() {
             panic!("self-signable JSON value is expected to be a JSON object");
         }
@@ -164,7 +172,7 @@ impl SelfSignable for selfhash::SelfHashableJSON<'_, '_> {
     }
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Verifier>> + 'a> {
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Verifier>> + 'a> {
         if !self.value().is_object() {
             panic!("self-signable JSON value is expected to be a JSON object");
         }

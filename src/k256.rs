@@ -22,6 +22,14 @@ impl Signer for k256::ecdsa::SigningKey {
     fn copy_key_bytes(&self, target: &mut [u8]) {
         target.copy_from_slice(&self.to_bytes());
     }
+    fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>> {
+        let mut hasher_b = self
+            .signature_algorithm()
+            .message_digest_hash_function()
+            .new_hasher();
+        hasher_b.update(message_byte_v);
+        self.sign_digest(hasher_b)
+    }
     fn sign_digest(&self, hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>> {
         if !hasher_b
             .hash_function()
@@ -152,6 +160,14 @@ impl Verifier for k256::ecdsa::VerifyingKey {
             key_type: self.key_type(),
             verifying_key_byte_v: Cow::Owned(verifying_key_byte_v),
         })
+    }
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
+        let mut hasher_b = signature
+            .signature_algorithm()
+            .message_digest_hash_function()
+            .new_hasher();
+        hasher_b.update(message_byte_v);
+        self.verify_digest(hasher_b, signature)
     }
     fn verify_digest(
         &self,

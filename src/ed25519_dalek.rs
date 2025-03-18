@@ -22,6 +22,11 @@ impl Signer for ed25519_dalek::SigningKey {
     fn copy_key_bytes(&self, target: &mut [u8]) {
         target.copy_from_slice(&self.to_bytes());
     }
+    fn sign_message(&self, message_byte_v: &[u8]) -> Result<Box<dyn Signature>> {
+        use ed25519_dalek::Signer;
+        let signature = self.sign(message_byte_v);
+        Ok(Box::new(signature))
+    }
     fn sign_digest(&self, hasher_b: Box<dyn selfhash::Hasher>) -> Result<Box<dyn Signature>> {
         if !hasher_b
             .hash_function()
@@ -156,6 +161,29 @@ impl Verifier for ed25519_dalek::VerifyingKey {
             key_type: self.key_type(),
             verifying_key_byte_v: Cow::Owned(self.to_bytes().to_vec()),
         })
+    }
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
+        require!(
+            self.key_type() == signature.signature_algorithm().key_type(),
+            "key_type ({}) must match that of signature_algorithm ({})",
+            self.key_type(),
+            signature.signature_algorithm().key_type()
+        );
+        let signature_bytes = signature.to_signature_bytes();
+        let signature_byte_array: &[u8; 64] = signature_bytes
+            .signature_byte_v
+            .as_ref()
+            .try_into()
+            .map_err(|_| {
+                error!(
+                    "signature_byte_v must be exactly 64 bytes long but it was {} bytes long",
+                    signature_bytes.signature_byte_v.len()
+                )
+            })?;
+        let ed25519_dalek_signature = ed25519_dalek::Signature::from_bytes(signature_byte_array);
+        use ed25519_dalek::Verifier;
+        self.verify(message_byte_v, &ed25519_dalek_signature)
+            .map_err(|e| error!("Ed25519_SHA_512 signature verification failed: {}", e))
     }
     fn verify_digest(
         &self,

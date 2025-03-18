@@ -54,13 +54,13 @@ pub trait SelfSignable {
     /// Returns an iterator over the self-signature slots in this object.
     fn self_signature_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Signature>> + 'a>;
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Signature>> + 'a>;
     /// Sets all self-signature slots in this object (including any nested objects) to the given signature.
     fn set_self_signature_slots_to(&mut self, signature: &dyn Signature);
     /// Returns an iterator over the self-signature verifier slots slots in this object.
     fn self_signature_verifier_oi<'a, 'b: 'a>(
         &'b self,
-    ) -> Box<dyn std::iter::Iterator<Item = Option<&dyn Verifier>> + 'a>;
+    ) -> Box<dyn std::iter::Iterator<Item = Option<&'b dyn Verifier>> + 'a>;
     /// Sets all self-signature verifier slots in this object (including any nested objects) to the given verifier.
     fn set_self_signature_verifier_slots_to(&mut self, verifier: &dyn Verifier);
     /// Checks that all the self-signature slots are equal, returning error if they aren't.  Otherwise returns

@@ -1,5 +1,6 @@
 # To-Do List for `selfsign`
 
+-   Implement to_ssi_jwk for `VerifierBytes`.
 -   Ideally get rid of NamedSignatureAlgorithm and maybe KeyType in favor of use of traits, so that the relevant Verifier, Signer, Signature traits can be implemented for arbitrary key types and signature algorithms, and client programs don't need to extend the `selfsign` crate in order to support additional key types and signature algorithms.  There would be a kind of registrar for key types and signature algorithms that is passed into self_sign and verify_self_signatures.
 -   Add more asymmetric key types and corresponding SignatureAlgorithms
     -   Secp256r1 (aka P-256)

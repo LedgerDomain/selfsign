@@ -64,15 +64,8 @@ pub trait Verifier: std::fmt::Debug {
             PreferredVerifierFormat::KERIVerifier(keri_verifier) => keri_verifier,
         }
     }
-    /// This verifies a message, i.e. hashes the message and then verifies the signature using verify_digest.
-    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
-        let mut hasher = signature
-            .signature_algorithm()
-            .message_digest_hash_function()
-            .new_hasher();
-        hasher.update(message_byte_v);
-        self.verify_digest(hasher, signature)
-    }
+    /// This verifies a message using the SignatureAlgorithm-specific verification method.
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()>;
     /// This verifies a pre-hashed message.  This is useful when the message is long, or is not already
     /// in a contiguous byte array.
     fn verify_digest(

@@ -10,6 +10,7 @@
 				"--package",
 				"selfsign",
 				"--all-features",
+				"--examples",
 				"--tests"
 			],
 			"presentation": {
@@ -19,7 +20,10 @@
 			"problemMatcher": [
 				"$rustc"
 			],
-			"group": "build"
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
 		},
 		{
 			"label": "test selfsign",
@@ -38,10 +42,7 @@
 			"problemMatcher": [
 				"$rustc"
 			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
+			"group": "build"
 		},
 		{
 			"label": "build selfsign-bin",

@@ -16,6 +16,10 @@ impl Verifier for KERIVerifier {
     fn as_preferred_verifier_format<'s: 'h, 'h>(&'s self) -> PreferredVerifierFormat<'h> {
         PreferredVerifierFormat::KERIVerifier(Cow::Borrowed(self))
     }
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
+        use std::ops::Deref;
+        self.deref().verify_message(message_byte_v, signature)
+    }
     fn verify_digest(
         &self,
         message_digest_b: Box<dyn selfhash::Hasher>,

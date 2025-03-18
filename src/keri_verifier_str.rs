@@ -98,6 +98,71 @@ impl<'a> Verifier for &'a KERIVerifierStr {
     fn as_preferred_verifier_format<'s: 'h, 'h>(&'s self) -> PreferredVerifierFormat<'h> {
         PreferredVerifierFormat::KERIVerifier(Cow::Borrowed(*self))
     }
+    fn verify_message(&self, message_byte_v: &[u8], signature: &dyn Signature) -> Result<()> {
+        require!(
+            self.key_type() == signature.signature_algorithm().key_type(),
+            "key_type ({:?}) must match that of signature_algorithm ({:?})",
+            self.key_type(),
+            signature.signature_algorithm().key_type()
+        );
+        // TODO: It would be better if this dispatched to the specific verifiers instead of
+        // invoking ed25519-dalek and k256 crates directly here.
+        match signature.signature_algorithm().named_signature_algorithm() {
+            NamedSignatureAlgorithm::ED25519_SHA_512 => {
+                #[cfg(feature = "ed25519-dalek")]
+                {
+                    let ed25519_dalek_verifying_key =
+                        ed25519_dalek::VerifyingKey::try_from(&self.to_verifier_bytes())?;
+                    let ed25519_dalek_signature =
+                        ed25519_dalek::Signature::try_from(&signature.to_signature_bytes())?;
+                    use ed25519_dalek::Verifier;
+                    ed25519_dalek_verifying_key
+                        .verify(message_byte_v, &ed25519_dalek_signature)
+                        .map_err(|e| {
+                            crate::error!("Ed25519_SHA_512 signature verification failed: {}", e)
+                        })
+                }
+                #[cfg(not(feature = "ed25519-dalek"))]
+                {
+                    panic!("ed25519-dalek feature not enabled");
+                }
+            }
+            NamedSignatureAlgorithm::SECP256K1_SHA_256 => {
+                #[cfg(feature = "k256")]
+                {
+                    let k256_verifying_key =
+                        k256::ecdsa::VerifyingKey::try_from(&self.to_verifier_bytes())?;
+                    let k256_signature =
+                        k256::ecdsa::Signature::try_from(&signature.to_signature_bytes())?;
+
+                    let mut hasher_b = signature
+                        .signature_algorithm()
+                        .message_digest_hash_function()
+                        .new_hasher();
+                    hasher_b.update(message_byte_v);
+
+                    k256::ecdsa::signature::DigestVerifier::verify_digest(
+                        &k256_verifying_key,
+                        *hasher_b
+                            .into_any()
+                            .downcast::<sha2::Sha256>()
+                            .expect("programmer error: message_digest must be sha2::Sha256"),
+                        &k256_signature,
+                    )
+                    .map_err(|e| {
+                        crate::error!("Secp256k1_SHA_256 signature verification failed: {}", e)
+                    })
+                }
+                #[cfg(not(feature = "k256"))]
+                {
+                    panic!("k256 feature not enabled");
+                }
+            }
+            _ => {
+                panic!("this should not be possible because of check in from_str");
+            }
+        }
+    }
     fn verify_digest(
         &self,
         message_digest_b: Box<dyn selfhash::Hasher>,
